@@ -9,3 +9,11 @@ local.properties
 
 # Ignore android keystores
 *.jks
+keystore.properties
+
+# Claude Code local files
+.claude/settings.local.json
+.claude/*.local.json
+.claude/*.*~
+.claude/sessions/
+.claude/.cache/
