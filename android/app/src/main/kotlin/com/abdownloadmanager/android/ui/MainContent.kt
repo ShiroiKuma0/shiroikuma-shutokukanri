@@ -20,6 +20,7 @@ import com.abdownloadmanager.android.pages.category.CategorySheet
 import com.abdownloadmanager.android.pages.checksum.FileChecksumPage
 import com.abdownloadmanager.android.pages.home.HomePage
 import com.abdownloadmanager.android.pages.settings.SettingsPage
+import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaUiPage
 import com.abdownloadmanager.android.pages.credits.thirdpartylibraries.ThirdPartyLibrariesPage
 import com.abdownloadmanager.android.pages.credits.translators.TranslatorsPage
 import com.abdownloadmanager.android.pages.editdownload.EditDownloadSheet
@@ -84,6 +85,10 @@ fun MainContent(
 
                 is Screen.Settings -> {
                     SettingsPage(screen.component)
+                }
+
+                is Screen.ShiroikumaUi -> {
+                    ShiroikumaUiPage(screen.component)
                 }
 
                 Screen.About -> {

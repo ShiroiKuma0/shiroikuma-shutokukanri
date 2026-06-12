@@ -19,6 +19,8 @@ import com.abdownloadmanager.android.storage.AppSettingsStorage
 import com.abdownloadmanager.android.storage.BrowserBookmarksStorage
 import com.abdownloadmanager.android.storage.HomePageStorage
 import com.abdownloadmanager.android.storage.OnBoardingData
+import com.abdownloadmanager.android.storage.ShiroikumaUiModel
+import com.abdownloadmanager.android.storage.ShiroikumaUiSettings
 import com.abdownloadmanager.android.util.ABDMAppManager
 import com.abdownloadmanager.android.util.ABDMServiceNotificationManager
 import com.abdownloadmanager.android.util.AndroidDefinedPaths
@@ -515,6 +517,16 @@ fun getAppModule(context: ABDMApp) = module {
         bind<LanguageStorage>()
         bind<ThemeSettingsStorage>()
         bind<INotificationSettingsStorage>()
+    }
+    single {
+        val definedPaths = get<DefinedPaths>()
+        ShiroikumaUiSettings(
+            kotlinxSerializationDataStore(
+                definedPaths.configDir.resolve("shiroikumaUi.json").toFile(),
+                get(),
+                ShiroikumaUiModel::default,
+            )
+        )
     }
     single {
         RemovedDownloadsFromDiskTracker(

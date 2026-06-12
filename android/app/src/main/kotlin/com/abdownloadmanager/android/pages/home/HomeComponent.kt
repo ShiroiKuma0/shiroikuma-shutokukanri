@@ -6,6 +6,7 @@ import androidx.compose.runtime.snapshotFlow
 import com.abdownloadmanager.android.action.createOpenBrowserAction
 import com.abdownloadmanager.android.pages.enterurl.AndroidEnterNewURLComponent
 import com.abdownloadmanager.android.pages.home.sections.sort.DownloadSortBy
+import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaUiPageManager
 import com.abdownloadmanager.android.storage.HomePageStorage
 import com.abdownloadmanager.android.util.AppInfo
 import com.abdownloadmanager.android.util.pagemanager.IBrowserPageManager
@@ -98,6 +99,7 @@ class HomeComponent(
     openSourceLibrariesPageManager: OpenSourceLibrariesPageManager,
     translatorsPageManager: TranslatorsPageManager,
     settingsPageManager: SettingsPageManager,
+    private val shiroikumaUiPageManager: ShiroikumaUiPageManager,
     perHostSettingsPageManager: PerHostSettingsPageManager,
     browserPageManager: IBrowserPageManager,
     aboutPageManager: AboutPageManager,
@@ -123,6 +125,10 @@ class HomeComponent(
     defaultCategories,
     fileIconProvider,
 ), EnterNewURLDialogManager {
+    fun openShiroikumaUiPage() {
+        shiroikumaUiPageManager.openShiroikumaUiPage()
+    }
+
     private val enterNewLinkNavigation = SlotNavigation<AndroidEnterNewURLComponent.Config>()
     val enterNewLinkSlot = childSlot(
         source = enterNewLinkNavigation,

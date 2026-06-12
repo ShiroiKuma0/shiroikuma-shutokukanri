@@ -16,10 +16,11 @@ fun ABDownloaderTheme(
     myColors: MyColors,
     fontFamily: FontFamily? = null,
     uiScale: Float = DEFAULT_UI_SCALE,
+    textSizeScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
     val systemDensity = LocalDensity.current
-    val textSizes = myPlatformTextSizes()
+    val textSizes = myPlatformTextSizes().scaledBy(textSizeScale)
     CompositionLocalProvider(
         LocalMyColors provides animatedColors(myColors),
         LocalUiScale provides uiScale,
@@ -49,5 +50,20 @@ fun ABDownloaderTheme(
 
         }
     }
+}
+
+private fun TextSizes.scaledBy(factor: Float): TextSizes {
+    if (factor == 1f) return this
+    return TextSizes(
+        xs = xs * factor,
+        sm = sm * factor,
+        base = base * factor,
+        lg = lg * factor,
+        xl = xl * factor,
+        x2l = x2l * factor,
+        x3l = x3l * factor,
+        x4l = x4l * factor,
+        x5l = x5l * factor,
+    )
 }
 

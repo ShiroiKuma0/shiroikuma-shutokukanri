@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowInsetsControllerCompat
 import com.abdownloadmanager.android.storage.AndroidOnBoardingStorage
 import com.abdownloadmanager.android.storage.HomePageStorage
+import com.abdownloadmanager.android.storage.ShiroikumaUiSettings
 import com.abdownloadmanager.android.ui.ABDownloadManagerApplicationContent
 import com.abdownloadmanager.android.util.ABDMAppManager
 import com.abdownloadmanager.android.util.AndroidUi
@@ -47,6 +48,7 @@ abstract class ABDMActivity : ComponentActivity(), KoinComponent {
     val abdmAppManager: ABDMAppManager by inject()
     val onBoardingStorage: AndroidOnBoardingStorage by inject()
     val homePageStorage: HomePageStorage by inject()
+    val shiroikumaUiSettings: ShiroikumaUiSettings by inject()
 
     open fun handleIntent(intent: Intent) {}
 
@@ -102,6 +104,7 @@ abstract class ABDMActivity : ComponentActivity(), KoinComponent {
                 languageManager = languageManager,
                 themeManager = themeManager,
                 appSettingsStorage = appSettingsStorage,
+                shiroikumaUiSettings = shiroikumaUiSettings,
                 iconResolver = iconResolver,
                 appRepository = appRepository,
                 notificationManager = notificationManager,

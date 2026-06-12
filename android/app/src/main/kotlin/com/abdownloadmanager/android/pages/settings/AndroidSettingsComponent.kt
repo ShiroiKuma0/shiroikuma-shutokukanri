@@ -1,5 +1,6 @@
 package com.abdownloadmanager.android.pages.settings
 
+import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaUiPageManager
 import com.abdownloadmanager.android.storage.AppSettingsStorage
 import com.abdownloadmanager.android.util.pagemanager.PermissionsPageManager
 import com.abdownloadmanager.shared.pagemanager.PerHostSettingsPageManager
@@ -22,6 +23,7 @@ class AndroidSettingsComponent(
     ctx: ComponentContext,
     perHostSettingsPageManager: PerHostSettingsPageManager,
     permissionsPageManager: PermissionsPageManager,
+    shiroikumaUiPageManager: ShiroikumaUiPageManager,
 ) : BaseSettingsComponent(
     ctx
 ), KoinComponent {
@@ -33,6 +35,11 @@ class AndroidSettingsComponent(
     private val languageManager by inject<LanguageManager>()
     override val configurables: StateFlow<List<ConfigurableGroup>> = MutableStateFlow(
         listOf(
+            ConfigurableGroup(
+                nestedConfigurable = listOf(
+                    AndroidSettings.shiroikumaUiPage(shiroikumaUiPageManager),
+                )
+            ),
             ConfigurableGroup(
                 mainConfigurable = CommonSettings.themeConfig(themeManager, scope),
                 nestedVisible = themeManager.currentThemeInfo.mapStateFlow {

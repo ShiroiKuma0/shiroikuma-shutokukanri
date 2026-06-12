@@ -1,6 +1,7 @@
 package com.abdownloadmanager.android.pages.settings
 
 import com.abdownloadmanager.android.pages.onboarding.permissions.ABDMPermissions
+import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaUiPageManager
 import com.abdownloadmanager.android.storage.AppSettingsStorage
 import com.abdownloadmanager.android.ui.configurable.android.item.PermissionConfigurable
 import com.abdownloadmanager.android.util.pagemanager.PermissionsPageManager
@@ -12,6 +13,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 
 object AndroidSettings {
+    fun shiroikumaUiPage(
+        shiroikumaUiPageManager: ShiroikumaUiPageManager
+    ): NavigatableConfigurable {
+        return NavigatableConfigurable(
+            title = "白い熊 取得管理 UI".asStringSource(),
+            description = "色・フォントなど、UI の外観をまとめて設定する。".asStringSource(),
+            onRequestNavigate = {
+                shiroikumaUiPageManager.openShiroikumaUiPage()
+            },
+        )
+    }
+
     fun permissionSettings(
         permissionsPageManager: PermissionsPageManager
     ): NavigatableConfigurable {

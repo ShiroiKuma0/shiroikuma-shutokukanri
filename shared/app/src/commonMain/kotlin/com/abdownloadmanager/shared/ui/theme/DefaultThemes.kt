@@ -4,6 +4,31 @@ import androidx.compose.ui.graphics.Color
 import com.abdownloadmanager.shared.util.ui.MyColors
 
 object DefaultThemes {
+    // 白い熊 fork default: black background, yellow text/icons/borders everywhere.
+    val shiroikuma = MyColors(
+        id = "shiroikuma",
+        name = "白い熊",
+        primary = Color(0xFFFFFF00),
+        primaryVariant = Color(0xFFFFFF00),
+        onPrimary = Color(0xFF000000),
+        secondary = Color(0xFFFFFF00),
+        secondaryVariant = Color(0xFFFFFF00),
+        onSecondary = Color(0xFF000000),
+        background = Color(0xFF000000),
+        onBackground = Color(0xFFFFFF00),
+        surface = Color(0xFF000000),
+        onSurface = Color(0xFFFFFF00),
+        error = Color(0xFFEA4C3C),
+        onError = Color(0xFF000000),
+        success = Color(0xFF45B36B),
+        onSuccess = Color(0xFF000000),
+        warning = Color(0xFFF6C244),
+        onWarning = Color(0xFF000000),
+        info = Color(0xFF40A9F3),
+        onInfo = Color(0xFF000000),
+        isLight = false,
+    )
+
     val dark = MyColors(
         id = "dark",
         name = "Dark",
@@ -175,6 +200,7 @@ object DefaultThemes {
 
     fun getAll(): List<MyColors> {
         return listOf(
+            shiroikuma,
             dark,
             light,
             obsidian,
@@ -185,6 +211,6 @@ object DefaultThemes {
         )
     }
 
-    fun getDefaultDark() = dark
+    fun getDefaultDark() = shiroikuma
     fun getDefaultLight() = light
 }

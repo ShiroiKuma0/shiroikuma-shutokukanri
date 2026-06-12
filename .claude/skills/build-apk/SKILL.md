@@ -40,7 +40,7 @@ description: Build the signed release APK with the buildApk Gradle task, then al
 
 1. **Note the output filename.** Read the current version and build number:
    - `grep -E 'VERSION_NAME|BUILD_NUMBER' gradle.properties`
-   - The APK will be `shiroikuma-abdm_<VERSION_NAME>+<BUILD_NUMBER>_arm64-v8a.apk`, using the `BUILD_NUMBER` value **before** the build (the task bumps it afterward).
+   - The APK will be `shiroikuma-shutokukanri_<VERSION_NAME>+<BUILD_NUMBER>_arm64-v8a.apk`, using the `BUILD_NUMBER` value **before** the build (the task bumps it afterward).
    - versionCode for that build = upstream packed code (`(major<<19)|(minor<<9)|patch`) × 100 + `BUILD_NUMBER`.
 
 2. **Build** (Gradle must be launched with JDK 21 — the default `java` on this machine is JDK 11; the JDK 25 *toolchain* the code compiles with is auto-provisioned by the foojay resolver):
@@ -70,7 +70,7 @@ builds, copies the APK to `~/tmp`, and bumps `BUILD_NUMBER`. Asking the user and
 
 Release signing is non-interactive: `android/app/build.gradle.kts` reads credentials from the
 gitignored `keystore.properties` in the repo root, pointing at
-`~/.android-keystores/shiroikuma-abdm.jks` (alias `abdm`). If `keystore.properties` is missing the
+`~/.android-keystores/shiroikuma-shutokukanri.jks` (alias `abdm`). If `keystore.properties` is missing the
 release APK is unsigned and will not install. (Upstream's own `SignApkTask` / `ABDM_KEYSTORE_*` CI
 signing path is unused by us.)
 

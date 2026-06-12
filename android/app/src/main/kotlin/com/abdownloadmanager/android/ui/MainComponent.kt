@@ -16,6 +16,8 @@ import com.abdownloadmanager.android.pages.onboarding.permissions.PermissionMana
 import com.abdownloadmanager.android.pages.perhostsettings.AndroidPerHostSettingsComponent
 import com.abdownloadmanager.android.pages.queue.QueueConfigurationComponent
 import com.abdownloadmanager.android.pages.settings.AndroidSettingsComponent
+import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaUiComponent
+import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaUiPageManager
 import com.abdownloadmanager.android.pages.singledownload.SingleDownloadPageActivity
 import com.abdownloadmanager.android.storage.AndroidOnBoardingStorage
 import com.abdownloadmanager.android.storage.HomePageStorage
@@ -78,6 +80,10 @@ sealed interface Screen {
         val component: AndroidSettingsComponent,
     ) : Screen
 
+    data class ShiroikumaUi(
+        val component: ShiroikumaUiComponent,
+    ) : Screen
+
     data object About : Screen
 
     data object OpenSourceThirdPartyLibraries : Screen
@@ -108,6 +114,9 @@ sealed interface ScreenConfig {
 
     @Serializable
     data object Settings : ScreenConfig
+
+    @Serializable
+    data object ShiroikumaUi : ScreenConfig
 
     @Serializable
     data object About : ScreenConfig
@@ -168,6 +177,7 @@ class MainComponent(
     CategoryDialogManager,
     NotificationSender,
     SettingsPageManager,
+    ShiroikumaUiPageManager,
     TranslatorsPageManager,
     OpenSourceLibrariesPageManager,
     AboutPageManager,
@@ -325,6 +335,7 @@ class MainComponent(
                             aboutPageManager = this,
                             batchDownloadPageManager = this,
                             settingsPageManager = this,
+                            shiroikumaUiPageManager = this,
                             perHostSettingsPageManager = this,
                             downloaderInUiRegistry = downloaderInUiRegistry,
                             updateComponent = updaterComponent,
@@ -340,6 +351,15 @@ class MainComponent(
                             ctx = ctx,
                             perHostSettingsPageManager = this,
                             permissionsPageManager = this,
+                            shiroikumaUiPageManager = this,
+                        )
+                    )
+                }
+
+                ScreenConfig.ShiroikumaUi -> {
+                    ShiroikumaUi(
+                        ShiroikumaUiComponent(
+                            ctx = ctx,
                         )
                     )
                 }
@@ -586,6 +606,22 @@ class MainComponent(
     override fun openSettings() {
         scope.launch {
             stackNavigation.pushToFront(ScreenConfig.Settings)
+        }
+    }
+
+    override fun openShiroikumaUiPage() {
+        scope.launch {
+            stackNavigation.pushToFront(ScreenConfig.ShiroikumaUi)
+        }
+    }
+
+    override fun closeShiroikumaUiPage() {
+        scope.launch {
+            stackNavigation.navigate {
+                it.filterNot { config ->
+                    config is ScreenConfig.ShiroikumaUi
+                }
+            }
         }
     }
 
