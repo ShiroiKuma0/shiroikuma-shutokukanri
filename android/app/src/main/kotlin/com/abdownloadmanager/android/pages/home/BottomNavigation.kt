@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -196,6 +197,10 @@ fun RowScope.DefaultItems(
             onClick = {
                 component.setIsMainMenuShowing(!isMainMenuShowing)
             },
+            // long-press on the hamburger jumps straight to the 白い熊 取得管理 UI page
+            onLongClick = {
+                component.openShiroikumaUiPage()
+            },
             modifier = modifier,
             isSelected = isMainMenuShowing,
         )
@@ -339,13 +344,17 @@ private fun BottonNavigationItem(
     onClick: () -> Unit,
     modifier: Modifier,
     isSelected: Boolean,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Box(modifier) {
         MyIcon(
             icon = icon,
             contentDescription = contentDescription.rememberString(),
             modifier = Modifier
-                .clickable(onClick = onClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
                 .padding(BottomNavigationConstants.DEFAULT_ICON_PADDING.dp)
                 .size(BottomNavigationConstants.DEFAULT_ICON_SIZE.dp)
         )

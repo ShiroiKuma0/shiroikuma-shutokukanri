@@ -75,7 +75,7 @@ data class MyColors(
     val primaryGradient by lazy {
         Brush.linearGradient(primaryGradientColors)
     }
-    val onPrimaryGradient = Color.White
+    val onPrimaryGradient = onPrimary
 
     fun selectionGradient(
         startAlpha: Float = 1f, endAlpha: Float = 0f,
