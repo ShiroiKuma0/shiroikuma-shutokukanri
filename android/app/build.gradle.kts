@@ -23,25 +23,81 @@ plugins {
     id(Plugins.aboutLibraries)
     id(Plugins.aboutLibrariesAndroid)
 }
+// Fork versioning (see gradle.properties): versionName = "<VERSION_NAME>+<BUILD_NUMBER>",
+// versionCode = upstream packed semver * 100 + BUILD_NUMBER (BUILD_NUMBER must stay <= 99).
+val forkVersionName = getAppVersionString()
+val forkBuildNumber = project.property("BUILD_NUMBER").toString().toInt()
+val forkVersionCode = getAppVersion().convertToVersionCode() * 100 + forkBuildNumber
+
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
 android {
     defaultConfig {
         minSdk = 26
         targetSdk = 36
-        applicationId = getApplicationPackageName()
-        versionCode = getAppVersion().convertToVersionCode()
-        versionName = getAppVersionString()
+        applicationId = project.property("APP_ID").toString()
+        versionCode = forkVersionCode
+        versionName = forkVersionName
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
     compileSdk = 36
     namespace = "com.abdownloadmanager.android"
+    signingConfigs {
+        if (keystoreProperties.isNotEmpty()) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            resValue("string", "app_short_name", "AB DM - Debug")
+            resValue("string", "app_short_name", "白い熊 ABDM - Debug")
+        }
+        release {
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+tasks.register("buildApk") {
+    description = "Build the signed release APK, copy it to ~/tmp, and bump BUILD_NUMBER for next time."
+    dependsOn("assembleRelease")
+    doLast {
+        val apkName = "shiroikuma-abdm_${forkVersionName}_arm64-v8a.apk"
+        val outputDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val targetDir = File(System.getProperty("user.home"), "tmp")
+        targetDir.mkdirs()
+        outputDir.listFiles { _, name -> name.endsWith(".apk") }?.firstOrNull()?.let { apk ->
+            val targetFile = File(targetDir, apkName)
+            apk.copyTo(targetFile, overwrite = true)
+            println("\u001b[1;36m>>> ${targetFile.absolutePath}\u001b[0m")
+            println("\u001b[1;36m>>> versionCode $forkVersionCode\u001b[0m")
+        } ?: throw GradleException("No APK found in $outputDir")
+
+        // Auto-increment BUILD_NUMBER for the next build.
+        val propsFile = rootProject.file("gradle.properties")
+        propsFile.writeText(
+            propsFile.readText().replace(
+                "BUILD_NUMBER=$forkBuildNumber",
+                "BUILD_NUMBER=${forkBuildNumber + 1}"
+            )
+        )
+        println("\u001b[1;36m>>> BUILD_NUMBER bumped to ${forkBuildNumber + 1}\u001b[0m")
     }
 }
 

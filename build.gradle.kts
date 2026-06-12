@@ -30,7 +30,10 @@ gitVersion {
         }
     }
 }
-version = (gitVersion.getVersion() ?: fallBackVersion).toVersion()
+// Fork versioning: VERSION_NAME tracks the upstream release, BUILD_NUMBER is our
+// increment (see gradle.properties). The upstream git-tag-derived version is unused
+// because the custom branch always sits between tags.
+version = "${project.property("VERSION_NAME")}+${project.property("BUILD_NUMBER")}".toVersion()
 logger.lifecycle("version: $version")
 
 tasks.dependencyUpdates {
