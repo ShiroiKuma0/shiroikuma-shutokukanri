@@ -78,7 +78,7 @@ tasks.register("buildApk") {
     description = "Build the signed release APK, copy it to ~/tmp, and bump BUILD_NUMBER for next time."
     dependsOn("assembleRelease")
     doLast {
-        val apkName = "shiroikuma-abdm_${forkVersionName}_arm64-v8a.apk"
+        val apkName = "shiroikuma-shutokukanri_${forkVersionName}_arm64-v8a.apk"
         val outputDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
         val targetDir = File(System.getProperty("user.home"), "tmp")
         targetDir.mkdirs()
