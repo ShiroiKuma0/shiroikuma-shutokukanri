@@ -1,6 +1,7 @@
 package com.abdownloadmanager.android.pages.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +17,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.abdownloadmanager.android.ui.LocalShiroikumaUi
 import com.abdownloadmanager.resources.Res
 import com.abdownloadmanager.shared.ui.widget.Text
 import com.abdownloadmanager.shared.util.FileIconProvider
@@ -57,11 +60,14 @@ fun DownloadList(
         changeAllSelection(false)
     }
     val dividerColor = myColors.onBackground / 0.5f
+    // settable on the 白い熊 取得管理 UI page; 0 = items touch (divider only)
+    val itemSpacing = LocalShiroikumaUi.current.listItemSpacing
     Box {
         LazyColumn(
             state = lazyListState,
             modifier = modifier,
-            contentPadding = contentPadding
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(itemSpacing.dp),
         ) {
             itemsIndexed(
                 items = downloadList,
