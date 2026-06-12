@@ -4,9 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.platform.LocalContext
+import com.abdownloadmanager.android.storage.ShiroikumaUiModel
+import com.abdownloadmanager.android.storage.ShiroikumaUiSettings
 import com.abdownloadmanager.android.ui.configurable.comon.CommonConfigurableRenderersForAndroid
 import com.abdownloadmanager.android.ui.configurable.comon.ConfigurableRenderersForAndroid
 import com.abdownloadmanager.android.util.AppInfo
+import com.abdownloadmanager.android.util.ShiroikumaFonts
 import com.abdownloadmanager.shared.repository.BaseAppRepository
 import com.abdownloadmanager.shared.storage.BaseAppSettingsStorage
 import com.abdownloadmanager.shared.ui.ProvideCommonSettings
@@ -30,6 +36,7 @@ fun ABDownloadManagerApplicationContent(
     languageManager: LanguageManager,
     themeManager: ThemeManager,
     appSettingsStorage: BaseAppSettingsStorage,
+    shiroikumaUiSettings: ShiroikumaUiSettings,
     iconResolver: IIconResolver,
     appRepository: BaseAppRepository,
     notificationManager: NotificationManager,
@@ -57,17 +64,28 @@ fun ABDownloadManagerApplicationContent(
                 ProvideNotificationManager(notificationManager) {
                     val myColors by themeManager.currentThemeColor.collectAsState()
                     val uiScale by appSettingsStorage.uiScale.collectAsState()
+                    val shiroikumaUi by shiroikumaUiSettings.data.collectAsState()
+                    val effectiveColors = remember(myColors, shiroikumaUi) {
+                        shiroikumaUi.applyTo(myColors)
+                    }
+                    val context = LocalContext.current
+                    val fontFamily = remember(shiroikumaUi.fontFile) {
+                        ShiroikumaFonts.fontFamily(context, shiroikumaUi.fontFile)
+                    }
                     ABDownloaderTheme(
-                        myColors = myColors,
-                        fontFamily = null,
+                        myColors = effectiveColors,
+                        fontFamily = fontFamily,
                         uiScale = uiScale,
+                        textSizeScale = shiroikumaUi.textSizeScale,
                     ) {
-                        ResponsiveBox {
-                            ProvideSizeUnits(
-                                appRepository
-                            ) {
-                                PopUpContainer {
-                                    content()
+                        CompositionLocalProvider(LocalShiroikumaUi provides shiroikumaUi) {
+                            ResponsiveBox {
+                                ProvideSizeUnits(
+                                    appRepository
+                                ) {
+                                    PopUpContainer {
+                                        content()
+                                    }
                                 }
                             }
                         }
@@ -77,3 +95,6 @@ fun ABDownloadManagerApplicationContent(
         }
     }
 }
+
+// The 白い熊 UI settings model, available anywhere in the tree (list spacing etc.).
+val LocalShiroikumaUi = compositionLocalOf { ShiroikumaUiModel() }
