@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">白い熊 ABDM</string>
-    <string name="app_short_name">白い熊 ABDM</string>
-    <string name="app_browser">白い熊 ABDM Browser</string>
+    <string name="app_name">白い熊 取得管理</string>
+    <string name="app_short_name">白い熊 取得管理</string>
+    <string name="app_browser">白い熊 取得管理 Browser</string>
 </resources>

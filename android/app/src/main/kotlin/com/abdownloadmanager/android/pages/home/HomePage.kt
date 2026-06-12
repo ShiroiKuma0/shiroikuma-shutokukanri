@@ -196,7 +196,7 @@ fun HomePage(component: HomeComponent) {
                     },
                     headerTitle = {
                         PageTitle(
-                            myStringResource(Res.string.app_title)
+                            "白い熊 取得管理"
                         )
                     }
                 )

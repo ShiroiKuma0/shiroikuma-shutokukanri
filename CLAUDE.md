@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**白い熊 ABDM** — a personal fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager),
+**白い熊 取得管理** — a personal fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager),
 an open-source download manager written in Kotlin / Compose Multiplatform. Upstream ships both a
 desktop app and an Android app; **we build and ship only the Android APK** (the `android:app` module).
 
-This repository (`ShiroiKuma0/shiroikuma-abdm`) is a fork. We track upstream
+This repository (`ShiroiKuma0/shiroikuma-shutokukanri`) is a fork. We track upstream
 (`amir1376/ab-download-manager`) and layer our own customizations on top of it.
 
 ## Fork Workflow — READ THIS FIRST
@@ -18,7 +18,7 @@ customizations on top of upstream and rebuild as upstream releases new versions.
 
 ### Git remotes & branches
 
-- `origin` → `git@github.com:ShiroiKuma0/shiroikuma-abdm` — our fork (push here).
+- `origin` → `git@github.com:ShiroiKuma0/shiroikuma-shutokukanri` — our fork (push here).
 - `upstream` → `https://github.com/amir1376/ab-download-manager.git` — the original (read-only, for rebasing).
 - **`master`** mirrors upstream's `master`. We do **not** develop on it.
 - **`custom`** is our development branch. **All our work lives here.** This is the default working branch.
@@ -27,12 +27,14 @@ customizations on top of upstream and rebuild as upstream releases new versions.
 
 | What | Value | Where |
 | --- | --- | --- |
-| Installed app ID | `shiroikuma.abdm` | `gradle.properties` → `APP_ID`, applied in `android/app/build.gradle.kts` |
+| Installed app ID | `shiroikuma.shutokukanri` | `gradle.properties` → `APP_ID`, applied in `android/app/build.gradle.kts` |
 | Code namespace | `com.abdownloadmanager.android` (unchanged from upstream) | `android/app/build.gradle.kts` |
-| App launcher label | `白い熊 ABDM` | `app_name` / `app_short_name` in `android/app/src/main/res/values/strings.xml` |
+| App launcher label | `白い熊 取得管理` | `app_name` / `app_short_name` in `android/app/src/main/res/values/strings.xml` |
+| Main-screen header title | `白い熊 取得管理` (hardcoded, replaces `Res.string.app_title`) | `android/app/src/main/kotlin/com/abdownloadmanager/android/pages/home/HomePage.kt` |
+| App icon | Traced black–yellow style: yellow-outlined glyph, black interiors, black square; source SVG `~/tmp/shutokukanri-icon.svg` | launcher: `android/app/src/main/res/drawable/ic_launcher_{foreground,background,monochrome}.xml`; in-app: `shared/resources/src/commonMain/kotlin/com/abdownloadmanager/resources/icons/AppIcon.kt` |
 | Fork versioning | `VERSION_NAME` + `BUILD_NUMBER` override of upstream's git-tag versioning | `gradle.properties` + root `build.gradle.kts` |
 | ABI | arm64-v8a only (`ndk.abiFilters`) | `android/app/build.gradle.kts` |
-| Signing | `shiroikuma-abdm.jks` via gitignored `keystore.properties` | `~/.android-keystores/shiroikuma-abdm.jks`, alias `abdm` |
+| Signing | `shiroikuma-shutokukanri.jks` via gitignored `keystore.properties` | `~/.android-keystores/shiroikuma-shutokukanri.jks`, alias `abdm` |
 | JDK toolchain auto-provisioning | foojay resolver enabled (upstream has it commented out) | `settings.gradle.kts` |
 
 The app ID is deliberately changed so this fork installs **alongside** upstream without conflict. The
@@ -53,8 +55,8 @@ instead:
 - Fork `versionName` = `"<VERSION_NAME>+<BUILD_NUMBER>"` (e.g. `1.9.0+1`).
 - Fork `versionCode` = upstream packed code × 100 + `BUILD_NUMBER`
   (e.g. `1.9.0` packs to `528896`, so `1.9.0+1` → `52889601`).
-- Output APK filename = `shiroikuma-abdm_<VERSION_NAME>+<BUILD_NUMBER>_arm64-v8a.apk`
-  (e.g. `shiroikuma-abdm_1.9.0+1_arm64-v8a.apk`).
+- Output APK filename = `shiroikuma-shutokukanri_<VERSION_NAME>+<BUILD_NUMBER>_arm64-v8a.apk`
+  (e.g. `shiroikuma-shutokukanri_1.9.0+2_arm64-v8a.apk`).
 
 So the first build is `+1` (`52889601`), the next build with changes is `+2` (`52889602`), and so on.
 When upstream's version climbs, the packed code climbs with it, keeping upgrades monotonic.
@@ -74,7 +76,7 @@ See the **build-apk** skill for the full build-and-push procedure.
 
 `buildApk` (defined in `android/app/build.gradle.kts`):
 1. builds `assembleRelease` for `android:app` (signed via `keystore.properties`),
-2. copies the APK to `~/tmp/shiroikuma-abdm_<version>_arm64-v8a.apk`,
+2. copies the APK to `~/tmp/shiroikuma-shutokukanri_<version>_arm64-v8a.apk`,
 3. **auto-increments `BUILD_NUMBER`** in `gradle.properties` for the next build.
 
 ### Rebasing onto a new upstream release
