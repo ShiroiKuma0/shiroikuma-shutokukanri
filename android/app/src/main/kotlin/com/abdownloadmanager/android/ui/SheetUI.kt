@@ -1,6 +1,7 @@
 package com.abdownloadmanager.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.abdownloadmanager.shared.ui.widget.Text
 import com.abdownloadmanager.shared.util.ResponsiveDialogScope
 import com.abdownloadmanager.shared.util.div
@@ -44,6 +46,12 @@ fun ResponsiveDialogScope.SheetUI(
     header: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val sheetShape = myShapes.createSheetWithCustomEdges(
+        topStart = isTopStartFree,
+        bottomStart = isBottomStartFree,
+        topEnd = isTopEndFree,
+        bottomEnd = isBottomEndFree,
+    )
     WithContentColor(myColors.onSurface) {
         Column(
             Modifier
@@ -54,14 +62,8 @@ fun ResponsiveDialogScope.SheetUI(
                 )
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .clip(
-                    myShapes.createSheetWithCustomEdges(
-                        topStart = isTopStartFree,
-                        bottomStart = isBottomStartFree,
-                        topEnd = isTopEndFree,
-                        bottomEnd = isBottomEndFree,
-                    )
-                )
+                .clip(sheetShape)
+                .border(1.dp, myColors.onSurface, sheetShape)
                 .background(myColors.surface)
                 .let { modifier ->
                     val verticalNavigationBarPaddingValues = WindowInsets.navigationBars
