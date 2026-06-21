@@ -136,7 +136,7 @@ private fun RenderNotification(
         .height(IntrinsicSize.Max)
         .fillMaxWidth()
         .clip(shape)
-        .border(1.dp, myColors.menuBorderColor, shape)
+        .border(1.dp, myColors.onSurface, shape)
         .background(myColors.menuGradientBackground, shape)
         .padding(10.dp)
     ) {
