@@ -106,6 +106,7 @@ abstract class ABDMActivity : ComponentActivity(), KoinComponent {
                 iconResolver = iconResolver,
                 appRepository = appRepository,
                 notificationManager = notificationManager,
+                abdmAppManager = abdmAppManager,
                 content = content,
             )
         }
