@@ -10,7 +10,7 @@ A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager)
 
 Installs **side-by-side** with the official app (app id `shiroikuma.shutokukanri`).
 
-**📥 Latest release: [`1.9.2+1`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
+**📥 Latest release: [`1.9.2+2`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
 
 </div>
 
