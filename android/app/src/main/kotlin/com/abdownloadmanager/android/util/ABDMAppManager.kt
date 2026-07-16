@@ -84,9 +84,15 @@ class ABDMAppManager(
         }
     }
 
-    private var shouldShowToastsNotifications = MutableStateFlow(true)
-    fun setNotificationsHandledInUi(shownInUi: Boolean) {
-        shouldShowToastsNotifications.value = !shownInUi
+    // number of visible app screens currently rendering flash notifications in-UI;
+    // the system-toast fallback fires only when none of them is visible
+    private val uiNotificationHandlers = MutableStateFlow(0)
+    fun onNotificationUiVisible() {
+        uiNotificationHandlers.update { it + 1 }
+    }
+
+    fun onNotificationUiHidden() {
+        uiNotificationHandlers.update { (it - 1).coerceAtLeast(0) }
     }
 
     private fun registerAsFallbackNotification(): () -> Unit {
@@ -95,8 +101,8 @@ class ABDMAppManager(
         val job = scope.headlessComposeRuntime {
             val scope = rememberCoroutineScope()
             val notifications by notificationManager.activeNotificationList.collectAsState()
-            val shouldShowNotifications by shouldShowToastsNotifications.collectAsState()
-            if (!shouldShowNotifications) {
+            val uiHandlers by uiNotificationHandlers.collectAsState()
+            if (uiHandlers > 0) {
                 return@headlessComposeRuntime
             }
             notifications
