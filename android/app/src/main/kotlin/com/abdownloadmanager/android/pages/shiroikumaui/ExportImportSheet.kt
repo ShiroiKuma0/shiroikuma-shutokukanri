@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -154,7 +155,12 @@ fun ExportImportSheet(component: ShiroikumaUiComponent) {
                         label = cat.label,
                         bold = false,
                         checked = selection[cat] == true,
-                        onChange = { selection[cat] = it },
+                        // sub-options sit indented under their parent and follow its toggle
+                        indent = if (cat.parentId != null) 26.dp else 0.dp,
+                        onChange = { checked ->
+                            selection[cat] = checked
+                            cat.children.forEach { selection[it] = checked }
+                        },
                     )
                 }
 
@@ -231,17 +237,59 @@ fun ExportImportInfoDialog(
     }
 }
 
+/** The yes/no dialog: same black surface + yellow border, Cancel left, action right. */
+@Composable
+fun ShiroikumaConfirmDialog(
+    confirm: ShiroikumaUiComponent.ConfirmDialog,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .border(2.dp, myColors.primary, RoundedCornerShape(16.dp))
+                .background(myColors.background)
+                .padding(20.dp)
+        ) {
+            Text(
+                confirm.title,
+                fontSize = myTextSizes.xl,
+                fontWeight = FontWeight.Bold,
+                color = myColors.primary,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                confirm.body,
+                fontSize = myTextSizes.base,
+                color = myColors.primary,
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PillButton("キャンセル", onDismiss)
+                Spacer(Modifier.weight(1f))
+                PillButton(confirm.confirmLabel, confirm.onConfirm)
+            }
+        }
+    }
+}
+
 @Composable
 private fun CheckRow(
     label: String,
     bold: Boolean,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
+    indent: Dp = 0.dp,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
             .clickable { onChange(!checked) }
+            .padding(start = indent)
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
