@@ -2,11 +2,13 @@ package com.abdownloadmanager.android.pages.shiroikumaui
 
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,7 +26,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -154,35 +159,67 @@ fun ShiroikumaUiPage(
     infoDialog?.let {
         ExportImportInfoDialog(it, component)
     }
+    val confirmDialog by component.confirmDialog.collectAsState()
+    confirmDialog?.let {
+        ShiroikumaConfirmDialog(it, onDismiss = component::dismissConfirmDialog)
+    }
 }
 
-/** A tappable row (title + description + live status), e.g. the Export/Import entry. */
+/**
+ * A tappable row (title + description + live status), e.g. the Export/Import entry —
+ * with an optional secondary action pinned to the right (e.g. トークン → 再生成).
+ */
 @Composable
 private fun ActionRow(entry: ShiroikumaUiComponent.Entry.Action) {
     val status by entry.status.collectAsState()
-    Column(
+    Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = entry.onClick)
-            .padding(start = INDENT_BASE + INDENT_STEP * (entry.level + 1))
-            .padding(vertical = 8.dp, horizontal = 8.dp)
+            .padding(start = INDENT_BASE + INDENT_STEP * (entry.level + 1)),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            entry.title,
-            fontSize = myTextSizes.lg,
-            color = myColors.onBackground,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            entry.description,
-            fontSize = myTextSizes.sm,
-            color = myColors.onBackground / 0.75f,
-        )
-        Text(
-            status.first,
-            fontSize = myTextSizes.sm,
-            color = if (status.second) myColors.error else myColors.onBackground / 0.75f,
-        )
+        Column(
+            Modifier
+                .weight(1f)
+                .clickable(onClick = entry.onClick)
+                .padding(vertical = 8.dp, horizontal = 8.dp)
+        ) {
+            Text(
+                entry.title,
+                fontSize = myTextSizes.lg,
+                color = myColors.onBackground,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                entry.description,
+                fontSize = myTextSizes.sm,
+                color = myColors.onBackground / 0.75f,
+            )
+            Text(
+                status.first,
+                fontSize = myTextSizes.sm,
+                color = if (status.second) myColors.error else myColors.onBackground / 0.75f,
+            )
+        }
+        val trailingLabel = entry.trailingLabel
+        val onTrailingClick = entry.onTrailingClick
+        if (trailingLabel != null && onTrailingClick != null) {
+            Box(
+                Modifier
+                    .padding(end = 8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .border(1.5.dp, myColors.primary, RoundedCornerShape(50))
+                    .clickable(onClick = onTrailingClick)
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    trailingLabel,
+                    fontSize = myTextSizes.sm,
+                    fontWeight = FontWeight.Bold,
+                    color = myColors.primary,
+                )
+            }
+        }
     }
 }
 

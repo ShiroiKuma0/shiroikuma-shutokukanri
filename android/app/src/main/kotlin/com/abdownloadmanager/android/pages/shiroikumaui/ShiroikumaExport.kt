@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import com.abdownloadmanager.android.BuildConfig
 import com.abdownloadmanager.android.storage.AppSettingsStorage
 import com.abdownloadmanager.android.storage.BrowserBookmark
 import com.abdownloadmanager.android.storage.BrowserBookmarksStorage
@@ -13,6 +14,7 @@ import com.abdownloadmanager.shared.storage.SupportedSizeUnits
 import com.abdownloadmanager.shared.ui.theme.ThemeManager
 import com.abdownloadmanager.shared.util.category.Category
 import com.abdownloadmanager.shared.util.category.CategoryManager
+import com.abdownloadmanager.shared.util.category.CategoryStorage
 import com.abdownloadmanager.shared.util.perhostsettings.IPerHostSettingsStorage
 import com.abdownloadmanager.shared.util.perhostsettings.PerHostSettingsItem
 import com.abdownloadmanager.shared.util.proxy.IProxyStorage
@@ -58,7 +60,15 @@ import java.util.zip.ZipOutputStream
 object ShiroikumaExport : KoinComponent {
     const val FORMAT = "shutokukanri-export"
     const val VERSION = 1
-    const val EXPORT_PREFIX = "shiroikuma-shutokukanri-"
+
+    /**
+     * The family-wide backup name: `<english-app-name>_<yyyy-MM-dd_HH-mm-ss>.zip`, no version
+     * and no decoration, so every sister app's backups sort and read uniformly in one directory.
+     */
+    const val EXPORT_PREFIX = "shiroikuma-shutokukanri_"
+
+    /** Pre-2026-07-25 name (`…-<version>-export_…`) — still recognised when looking for the newest. */
+    private const val LEGACY_EXPORT_PREFIX = "shiroikuma-shutokukanri-"
 
     private val appSettings by inject<AppSettingsStorage>()
     private val uiSettings by inject<ShiroikumaUiSettings>()
@@ -67,6 +77,7 @@ object ShiroikumaExport : KoinComponent {
     private val perHostStorage by inject<IPerHostSettingsStorage>()
     private val bookmarksStorage by inject<BrowserBookmarksStorage>()
     private val categoryManager by inject<CategoryManager>()
+    private val categoryStorage by inject<CategoryStorage>()
 
     private val json = Json {
         prettyPrint = true
@@ -74,9 +85,15 @@ object ShiroikumaExport : KoinComponent {
         encodeDefaults = true
     }
 
-    /** A selectable category; `id` is the JSON file name (`<id>.json`) inside the ZIP. */
-    enum class Cat(val id: String, val label: String) {
+    /**
+     * A selectable category; `id` is the JSON file name (`<id>.json`) inside the ZIP, and the
+     * id the automation contract accepts in its `items` extra. A category with a [parentId]
+     * is a *sub-option* of that parent — its own independently selectable part of the export.
+     */
+    enum class Cat(val id: String, val label: String, val parentId: String? = null) {
         APPEARANCE("appearance", "外観（テーマ・色・書体）"),
+        // the imported .ttf/.otf files themselves — the one bulky part of the backup
+        APPEARANCE_FONTS("appearance.fonts", "書体ファイル", parentId = "appearance"),
         GENERAL("general", "一般（言語・表示・単位）"),
         DOWNLOAD("download", "ダウンロード設定"),
         NOTIFICATIONS("notifications", "通知"),
@@ -85,6 +102,9 @@ object ShiroikumaExport : KoinComponent {
         PER_HOST("perhost", "サイト別設定"),
         CATEGORIES("categories", "取得カテゴリ"),
         BOOKMARKS("bookmarks", "ブックマーク");
+
+        val parent: Cat? get() = parentId?.let(::byId)
+        val children: List<Cat> get() = entries.filter { it.parentId == id }
 
         companion object {
             fun byId(id: String): Cat? = entries.firstOrNull { it.id == id }
@@ -206,39 +226,71 @@ object ShiroikumaExport : KoinComponent {
             stringField("apiAuthKey", appSettings.apiAuthKey),
         )
 
-        // data categories are serialized whole, not per field
-        Cat.PROXY, Cat.PER_HOST, Cat.CATEGORIES, Cat.BOOKMARKS -> emptyList()
+        // data categories are serialized whole, not per field; fonts are real files
+        Cat.APPEARANCE_FONTS, Cat.PROXY, Cat.PER_HOST, Cat.CATEGORIES, Cat.BOOKMARKS -> emptyList()
     }
 
     // ---- export ----
 
-    fun exportFileName(versionName: String): String =
-        EXPORT_PREFIX + versionName + "-export_" +
-            SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(Date()) + ".zip"
+    fun exportFileName(): String =
+        EXPORT_PREFIX + SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(Date()) + ".zip"
 
     /** The newest export in [dirPath], by file mtime; null when none (or the dir is unreadable). */
     fun latestExport(dirPath: String): File? =
         runCatching {
             File(dirPath).listFiles()
-                ?.filter { it.isFile && it.name.startsWith(EXPORT_PREFIX) && it.name.endsWith(".zip") }
+                ?.filter {
+                    it.isFile && it.name.endsWith(".zip") &&
+                        (it.name.startsWith(EXPORT_PREFIX) || it.name.startsWith(LEGACY_EXPORT_PREFIX))
+                }
                 ?.maxByOrNull { it.lastModified() }
         }.getOrNull()
 
     fun formatTimestamp(t: Long): String =
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT).format(Date(t))
 
-    /** Write a ZIP of the selected categories to [out]. */
-    fun export(context: Context, cats: Set<Cat>, out: OutputStream) {
+    /** `4.6 MB` / `1.20 GB` — for display next to the real byte count. */
+    fun humanSize(bytes: Long): String {
+        val k = 1024.0
+        return when {
+            bytes < k -> "$bytes B"
+            bytes < k * k -> String.format(Locale.ROOT, "%.1f KB", bytes / k)
+            bytes < k * k * k -> String.format(Locale.ROOT, "%.1f MB", bytes / (k * k))
+            else -> String.format(Locale.ROOT, "%.2f GB", bytes / (k * k * k))
+        }
+    }
+
+    /**
+     * Write a ZIP of the selected categories to [out] — the headless export core, shared by
+     * the Export/Import panel and the automation receiver.
+     *
+     * [onProgress] is called once per category with `(done, total, label)`, counting real
+     * categories (never a percentage).
+     */
+    suspend fun export(
+        context: Context,
+        cats: Set<Cat>,
+        out: OutputStream,
+        onProgress: (done: Int, total: Int, label: String) -> Unit = { _, _, _ -> },
+    ) {
+        // deterministic, parent-before-child order regardless of how the set was built
+        val ordered = Cat.entries.filter { it in cats }
         ZipOutputStream(out).use { zip ->
             val manifest = buildJsonObject {
                 put("format", JsonPrimitive(FORMAT))
                 put("version", JsonPrimitive(VERSION))
                 put("app", JsonPrimitive(context.packageName))
+                put("appVersion", JsonPrimitive(BuildConfig.VERSION_NAME))
                 put("createdTs", JsonPrimitive(System.currentTimeMillis()))
-                put("categories", JsonArray(cats.map { JsonPrimitive(it.id) }))
+                put("categories", JsonArray(ordered.map { JsonPrimitive(it.id) }))
             }
             writeEntry(zip, "manifest.json", json.encodeToString(JsonObject.serializer(), manifest))
-            for (cat in cats) {
+            ordered.forEachIndexed { index, cat ->
+                onProgress(index + 1, ordered.size, cat.label)
+                if (cat == Cat.APPEARANCE_FONTS) {
+                    exportFonts(context, zip)
+                    return@forEachIndexed
+                }
                 val payload = when (cat) {
                     Cat.PROXY -> json.encodeToString(ProxyData.serializer(), proxyStorage.proxyDataFlow.value)
                     Cat.PER_HOST -> json.encodeToString(
@@ -249,7 +301,7 @@ object ShiroikumaExport : KoinComponent {
                     Cat.CATEGORIES -> json.encodeToString(
                         ListSerializer(Category.serializer()),
                         // item ids reference downloads of THIS install — meaningless elsewhere
-                        categoryManager.getCategories().map { it.copy(items = emptyList()) },
+                        currentCategories().map { it.copy(items = emptyList()) },
                     )
 
                     Cat.BOOKMARKS -> json.encodeToString(
@@ -263,9 +315,19 @@ object ShiroikumaExport : KoinComponent {
                     )
                 }
                 writeEntry(zip, "${cat.id}.json", payload)
-                if (cat == Cat.APPEARANCE) exportFonts(context, zip)
             }
         }
+    }
+
+    /**
+     * The download categories. The CategoryManager only fills its list once the download
+     * system boots, which a headless export does not wait for — fall back to the file.
+     */
+    private suspend fun currentCategories(): List<Category> {
+        categoryManager.getCategories().takeIf { it.isNotEmpty() }?.let { return it }
+        return runCatching {
+            if (categoryStorage.isCategoriesSet()) categoryStorage.getCategories() else emptyList()
+        }.getOrDefault(emptyList())
     }
 
     private fun writeEntry(zip: ZipOutputStream, name: String, content: String) {
@@ -293,21 +355,33 @@ object ShiroikumaExport : KoinComponent {
                 json.parseToJsonElement(mf.decodeToString()).jsonObject["categories"]?.jsonArray
             }.getOrNull()
             if (cats != null) {
-                val set = cats.mapNotNull { Cat.byId(it.jsonPrimitive.content) }.toSet()
+                val set = cats.mapNotNull { Cat.byId(it.jsonPrimitive.content) }.toMutableSet()
+                // pre-sub-option exports listed only "appearance" but still carry the fonts
+                if (files.keys.any { it.startsWith("fonts/") }) set.add(Cat.APPEARANCE_FONTS)
                 if (set.isNotEmpty()) return set
             }
         }
-        return Cat.entries.filter { files.containsKey("${it.id}.json") }.toSet()
+        return Cat.entries.filter {
+            when (it) {
+                Cat.APPEARANCE_FONTS -> files.keys.any { name -> name.startsWith("fonts/") }
+                else -> files.containsKey("${it.id}.json")
+            }
+        }.toSet()
     }
 
     /**
      * Apply the selected categories from a ZIP; absent files are skipped, a failing
      * category never fails the whole import. Returns the per-category summary lines.
      */
-    fun import(context: Context, zipBytes: ByteArray, cats: Set<Cat>): String {
+    suspend fun import(context: Context, zipBytes: ByteArray, cats: Set<Cat>): String {
         val files = readZip(zipBytes)
         val parts = mutableListOf<String>()
-        for (cat in cats) {
+        for (cat in Cat.entries.filter { it in cats }) {
+            if (cat == Cat.APPEARANCE_FONTS) {
+                val written = importFonts(context, files)
+                if (written > 0) parts.add("${cat.label}: $written")
+                continue
+            }
             val data = files["${cat.id}.json"] ?: continue
             val n = try {
                 when (cat) {
@@ -335,10 +409,11 @@ object ShiroikumaExport : KoinComponent {
                             data.decodeToString(),
                         )
                         // keep this install's item lists where a category of the same name exists
-                        val itemsByName = categoryManager.getCategories().associateBy({ it.name }, { it.items })
-                        categoryManager.setCategories(
-                            imported.map { it.copy(items = itemsByName[it.name].orEmpty()) }
-                        )
+                        val itemsByName = currentCategories().associateBy({ it.name }, { it.items })
+                        val merged = imported.map { it.copy(items = itemsByName[it.name].orEmpty()) }
+                        categoryManager.setCategories(merged)
+                        // the manager only persists once the download system has booted
+                        runCatching { categoryStorage.setCategories(merged) }
                         imported.size
                     }
 
@@ -361,7 +436,6 @@ object ShiroikumaExport : KoinComponent {
                             val el = obj[field.name] ?: continue
                             if (runCatching { field.set(el) }.isSuccess) applied++
                         }
-                        if (cat == Cat.APPEARANCE) importFonts(context, files)
                         applied
                     }
                 }
@@ -373,15 +447,18 @@ object ShiroikumaExport : KoinComponent {
         return if (parts.isEmpty()) "（何も取り込めなかった）" else parts.joinToString("\n")
     }
 
-    private fun importFonts(context: Context, files: Map<String, ByteArray>) {
+    /** Restore the font files; returns how many were written. */
+    private fun importFonts(context: Context, files: Map<String, ByteArray>): Int {
         val dir = ShiroikumaFonts.fontsDir(context)
+        var written = 0
         for ((path, bytes) in files) {
             if (!path.startsWith("fonts/")) continue
             // basename only — no path traversal
             val name = File(path).name
             if (name.substringAfterLast('.', "").lowercase() !in setOf("ttf", "otf")) continue
-            runCatching { File(dir, name).writeBytes(bytes) }
+            if (runCatching { File(dir, name).writeBytes(bytes) }.isSuccess) written++
         }
+        return written
     }
 
     private fun readZip(bytes: ByteArray): Map<String, ByteArray> {
