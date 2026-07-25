@@ -59,7 +59,8 @@ class DirectoryPickerActivity : ABDMActivity() {
             ): Intent {
                 return Intent(context, DirectoryPickerActivity::class.java).apply {
                     putExtra(TITLE_KEY, input.title.getString())
-                    putExtra(INITIAL_DIR_KEY, input.initialDirectory.toString())
+                    // null must stay absent — "null".toPath() would be browsed literally
+                    putExtra(INITIAL_DIR_KEY, input.initialDirectory?.toString())
                 }
             }
 
