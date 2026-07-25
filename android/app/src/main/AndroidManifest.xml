@@ -125,6 +125,18 @@
             </intent-filter>
         </receiver>
 
+        <!--        保存復元: token-gated headless export driven by 白い熊 自由作業盤.
+                    No android:permission — the caller cannot hold one; the token is the gate.-->
+        <receiver
+                android:name=".automation.StateExportReceiver"
+                android:exported="true"
+        >
+            <intent-filter>
+                <action android:name="${applicationId}.action.EXPORT_STATE"/>
+                <action android:name="${applicationId}.action.LIST_CATEGORIES"/>
+            </intent-filter>
+        </receiver>
+
         <provider
                 android:name="androidx.core.content.FileProvider"
                 android:authorities="${applicationId}.provider"
