@@ -17,6 +17,8 @@ import kotlinx.serialization.Serializable
 data class ShiroikumaUiModel(
     // one-time switch of existing installs over to the 白い熊 theme
     val defaultsSeeded: Boolean = false,
+    // settings-export target directory; device-local, never part of an export itself
+    val exportDir: String = "",
     // "" = system default, "@monospace" = built-in monospace, otherwise a file in the fonts dir
     val fontFile: String = "",
     val textSizeScale: Float = 1f,
@@ -80,6 +82,7 @@ class ShiroikumaUiSettings(
     dataStore: DataStore<ShiroikumaUiModel>,
 ) : ConfigBaseSettingsByJson<ShiroikumaUiModel>(dataStore) {
     val defaultsSeeded = from(lensOf({ it.defaultsSeeded }, { s, v -> s.copy(defaultsSeeded = v) }))
+    val exportDir = from(lensOf({ it.exportDir }, { s, v -> s.copy(exportDir = v) }))
     val fontFile = from(lensOf({ it.fontFile }, { s, v -> s.copy(fontFile = v) }))
     val textSizeScale = from(lensOf({ it.textSizeScale }, { s, v -> s.copy(textSizeScale = v) }))
     val listItemSpacing = from(lensOf({ it.listItemSpacing }, { s, v -> s.copy(listItemSpacing = v) }))
