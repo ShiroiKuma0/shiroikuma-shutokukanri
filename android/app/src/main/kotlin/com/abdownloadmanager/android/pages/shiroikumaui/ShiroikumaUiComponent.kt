@@ -1,23 +1,32 @@
 package com.abdownloadmanager.android.pages.shiroikumaui
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.ui.graphics.Color
+import com.abdownloadmanager.android.BuildConfig
 import com.abdownloadmanager.android.storage.AppSettingsStorage
 import com.abdownloadmanager.android.storage.ShiroikumaUiSettings
 import com.abdownloadmanager.android.ui.configurable.android.item.ColorConfigurable
 import com.abdownloadmanager.android.ui.configurable.android.item.FontConfigurable
 import com.abdownloadmanager.android.ui.configurable.android.item.SliderConfigurable
+import com.abdownloadmanager.shared.pagemanager.NotificationSender
 import com.abdownloadmanager.shared.settings.CommonSettings
 import com.abdownloadmanager.shared.ui.configurable.Configurable
 import com.abdownloadmanager.shared.ui.configurable.item.EnumConfigurable
 import com.abdownloadmanager.shared.ui.theme.ThemeManager
+import com.abdownloadmanager.shared.ui.widget.NotificationType
 import com.abdownloadmanager.shared.util.BaseComponent
 import com.abdownloadmanager.shared.util.ui.MyColors
 import com.arkivanov.decompose.ComponentContext
 import ir.amirab.util.compose.asStringSource
 import ir.amirab.util.flow.mapStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.io.File
 import kotlin.math.roundToInt
 
 /** Opens / closes the 白い熊 取得管理 UI page (implemented by MainComponent). */
@@ -29,21 +38,171 @@ interface ShiroikumaUiPageManager {
 /**
  * The 白い熊 取得管理 UI page: every customizable attribute of the UI, laid out as a
  * section > subgroup > items cascade (one indent step deeper per level), following
- * the sister repos (白い熊 電話 / メッセージ).
+ * the sister repos (白い熊 電話 / メッセージ). The first section is the settings
+ * Export/Import (Kōjiki flow).
  */
 class ShiroikumaUiComponent(
     ctx: ComponentContext,
+    private val pageManager: ShiroikumaUiPageManager,
+    private val notificationSender: NotificationSender,
 ) : BaseComponent(ctx), KoinComponent {
     private val appSettings by inject<AppSettingsStorage>()
     private val themeManager by inject<ThemeManager>()
     private val uiSettings by inject<ShiroikumaUiSettings>()
+    private val appContext by inject<Context>()
 
     sealed interface Entry {
         val level: Int
 
         data class Section(val title: String, override val level: Int) : Entry
         data class Item(val configurable: Configurable<*>, override val level: Int) : Entry
+
+        /** A tappable row: title, static description, and a live (status, isWarning) line. */
+        data class Action(
+            val title: String,
+            val description: String,
+            val status: MutableStateFlow<Pair<String, Boolean>>,
+            val onClick: () -> Unit,
+            override val level: Int,
+        ) : Entry
     }
+
+    // ---- settings export / import (Kōjiki flow) ----
+
+    /** The acknowledged-info dialog above the Export/Import panel. */
+    data class InfoDialog(
+        val title: String,
+        val body: String,
+        val isImport: Boolean,
+    )
+
+    val exportDir = uiSettings.exportDir
+    val showExportImportPanel = MutableStateFlow(false)
+    val infoDialog = MutableStateFlow<InfoDialog?>(null)
+
+    /** (message, isWarning) for the "last export" line; refreshed on page open. */
+    val latestExportStatus = MutableStateFlow("" to false)
+
+    init {
+        refreshLatestExport()
+    }
+
+    /** Query the settable directory for the newest export (page open, dir change, export). */
+    fun refreshLatestExport() {
+        scope.launch(Dispatchers.IO) {
+            val dir = exportDir.value
+            latestExportStatus.value = when {
+                dir.isBlank() -> "エクスポート先が未設定。" to true
+                else -> {
+                    val newest = ShiroikumaExport.latestExport(dir)
+                    if (newest == null) "この場所にはまだエクスポートがない。" to true
+                    else "最新エクスポート: ${ShiroikumaExport.formatTimestamp(newest.lastModified())}" to false
+                }
+            }
+        }
+    }
+
+    fun openExportImport() {
+        refreshLatestExport()
+        showExportImportPanel.value = true
+    }
+
+    fun closeExportImportPanel() {
+        showExportImportPanel.value = false
+    }
+
+    fun setExportDir(path: String) {
+        uiSettings.exportDir.value = path
+        refreshLatestExport()
+    }
+
+    fun doExport(cats: Set<ShiroikumaExport.Cat>) {
+        if (cats.isEmpty()) {
+            notifyError("カテゴリが未選択", "カテゴリを最低ひとつ選択すること。")
+            return
+        }
+        val dir = exportDir.value
+        if (dir.isBlank()) {
+            notifyError("エクスポート先が未設定", "上の枠をタップして保存先を選択すること。")
+            return
+        }
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val name = ShiroikumaExport.exportFileName(BuildConfig.VERSION_NAME)
+                    val target = File(dir, name)
+                    target.parentFile?.mkdirs()
+                    target.outputStream().use { out ->
+                        ShiroikumaExport.export(appContext, cats, out)
+                    }
+                    name
+                }
+            }
+            result.onSuccess { name ->
+                refreshLatestExport()
+                infoDialog.value = InfoDialog(
+                    title = "✓ エクスポート完了",
+                    body = "${cats.size} カテゴリを保存した:\n$name",
+                    isImport = false,
+                )
+            }.onFailure { e ->
+                notifyError("エクスポート失敗", e.message ?: "不明なエラー")
+            }
+        }
+    }
+
+    fun doImport(uri: Uri, cats: Set<ShiroikumaExport.Cat>) {
+        if (cats.isEmpty()) {
+            notifyError("カテゴリが未選択", "カテゴリを最低ひとつ選択すること。")
+            return
+        }
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val bytes = appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: error("ファイルを読めなかった")
+                    require(ShiroikumaExport.categoriesIn(bytes).isNotEmpty()) {
+                        "このファイルに 白い熊 取得管理 のエクスポートが見つからない。"
+                    }
+                    ShiroikumaExport.import(appContext, bytes, cats)
+                }
+            }
+            result.onSuccess { summary ->
+                infoDialog.value = InfoDialog(
+                    title = "✓ インポート完了",
+                    body = "復元した:\n\n$summary\n\n全反映には再起動する。",
+                    isImport = true,
+                )
+            }.onFailure { e ->
+                notifyError("インポート失敗", e.message ?: "不明なエラー")
+            }
+        }
+    }
+
+    /**
+     * Acknowledge the info dialog (export OK / import 後で): close the whole chain —
+     * the info dialog, the panel beneath it, and the UI settings page itself.
+     */
+    fun acknowledgeInfoDialog() {
+        infoDialog.value = null
+        showExportImportPanel.value = false
+        pageManager.closeShiroikumaUiPage()
+    }
+
+    fun restartNow() {
+        ShiroikumaExport.restartApp(appContext)
+    }
+
+    private fun notifyError(title: String, description: String) {
+        notificationSender.sendNotification(
+            tag = "shiroikuma-eximport",
+            title = title.asStringSource(),
+            description = description.asStringSource(),
+            type = NotificationType.Error,
+        )
+    }
+
+    // ---- the settings cascade ----
 
     private fun colorItem(
         title: String,
@@ -67,6 +226,17 @@ class ShiroikumaUiComponent(
     )
 
     val entries: List<Entry> = buildList {
+        add(Entry.Section("エクスポート / インポート", 0))
+        add(
+            Entry.Action(
+                title = "エクスポート / インポート",
+                description = "全設定をカテゴリ別に保存・復元する。",
+                status = latestExportStatus,
+                onClick = ::openExportImport,
+                level = 1,
+            )
+        )
+
         add(Entry.Section("テーマ", 0))
         add(Entry.Item(CommonSettings.themeConfig(themeManager, scope), 1))
         add(Entry.Item(CommonSettings.uiScaleConfig(appSettings), 1))
