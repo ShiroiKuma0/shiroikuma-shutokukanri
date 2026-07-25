@@ -6,11 +6,11 @@
 
 **AB Download Manager in 白い熊 black and yellow — Android only, restyled end to end.**
 
-A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager) with **major additions**: a pure-yellow-on-black 白い熊 theme, a full appearance-tuning settings page (12 settable colors, external fonts, text-size and UI scale, list spacing), fork-styled dialogs and notifications, and a traced black–yellow icon.
+A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager) with **major additions**: a pure-yellow-on-black 白い熊 theme, a full appearance-tuning settings page (12 settable colors, external fonts, text-size and UI scale, list spacing), category-based settings export/import, fork-styled dialogs and notifications, and a traced black–yellow icon.
 
 Installs **side-by-side** with the official app (app id `shiroikuma.shutokukanri`).
 
-**📥 Latest release: [`1.9.2+2`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
+**📥 Latest release: [`1.10.1+4`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
 
 </div>
 
@@ -24,6 +24,10 @@ A new built-in theme (`shiroikuma`) — pure black `#000000` backgrounds and sur
 
 A dedicated settings page (top of Settings, or long-press the home hamburger): theme picker, UI scale, **12 individually settable colors** layered over the active theme (picker sheet with hex entry, RGB sliders, palette, and per-color theme-default reset), **external font import** (`.ttf`/`.otf`, every font option previewed in its own glyphs), text-size scale, and download-list item spacing. All of it persists and applies app-wide, live.
 
+## 📤 Category-based settings export/import
+
+The first section of the UI page saves and restores **every settable item in the app** — appearance (theme, colors, and the font files themselves), general, download, notification, system/API, proxy, per-host settings, download categories, and browser bookmarks — as a ZIP of plain JSON, one file per selectable category. A settable export directory is queried on page open for the latest export; imports merge instead of wiping, tolerate missing keys, and offer an in-place restart.
+
 ## 🟨 Fork-styled chrome
 
 Every dialog (add, edit, queues, categories, download info, finished, updater, prompts, …) and every in-app flash notification carries the fork's solid yellow border, drawn from the active theme so it follows your color overrides too.
@@ -34,7 +38,7 @@ The launcher and in-app icon are redrawn in the fork's traced style: a yellow-ou
 
 ## 📦 Lean Android packaging
 
-Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.9.2+1`) that stays upgrade-monotonic across upstream releases.
+Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+4`) that stays upgrade-monotonic across upstream releases.
 
 ---
 
