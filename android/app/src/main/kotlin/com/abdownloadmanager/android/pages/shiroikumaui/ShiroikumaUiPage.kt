@@ -2,7 +2,9 @@ package com.abdownloadmanager.android.pages.shiroikumaui
 
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -12,9 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,8 +44,10 @@ import com.abdownloadmanager.shared.util.ui.myColors
 import com.abdownloadmanager.shared.util.ui.theme.myTextSizes
 import ir.amirab.util.compose.asStringSource
 
-// each cascade level (section > subgroup > items) sits one more step in
-private val INDENT_STEP = 36.dp
+// kxkb indent ladder: headings start at 36dp and every tier (section > subgroup > items)
+// steps 18dp further in
+private val INDENT_BASE = 36.dp
+private val INDENT_STEP = 18.dp
 
 @Composable
 fun ShiroikumaUiPage(
@@ -102,10 +108,20 @@ fun ShiroikumaUiPage(
                         .padding(horizontal = 8.dp),
                 ) {
                     Spacer(Modifier.height(topPadding))
+                    var seenFirstSection = false
                     for (entry in component.entries) {
                         when (entry) {
                             is ShiroikumaUiComponent.Entry.Section -> {
-                                SectionHeader(entry.title, entry.level)
+                                SectionHeader(
+                                    entry.title,
+                                    entry.level,
+                                    isFirst = !seenFirstSection,
+                                )
+                                if (entry.level == 0) seenFirstSection = true
+                            }
+
+                            is ShiroikumaUiComponent.Entry.Action -> {
+                                ActionRow(entry)
                             }
 
                             is ShiroikumaUiComponent.Entry.Item -> {
@@ -114,7 +130,7 @@ fun ShiroikumaUiPage(
                                     configurableUiProps = ConfigurableUiProps(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = INDENT_STEP * entry.level),
+                                            .padding(start = INDENT_BASE + INDENT_STEP * (entry.level + 1)),
                                         itemPaddingValues = PaddingValues(
                                             vertical = 8.dp,
                                             horizontal = 8.dp,
@@ -129,29 +145,91 @@ fun ShiroikumaUiPage(
             FooterFade(bottomPadding)
         }
     }
+
+    val showPanel by component.showExportImportPanel.collectAsState()
+    if (showPanel) {
+        ExportImportSheet(component)
+    }
+    val infoDialog by component.infoDialog.collectAsState()
+    infoDialog?.let {
+        ExportImportInfoDialog(it, component)
+    }
 }
 
+/** A tappable row (title + description + live status), e.g. the Export/Import entry. */
 @Composable
-private fun SectionHeader(title: String, level: Int) {
-    val isTopLevel = level == 0
+private fun ActionRow(entry: ShiroikumaUiComponent.Entry.Action) {
+    val status by entry.status.collectAsState()
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(start = INDENT_STEP * level)
-            .padding(top = if (isTopLevel) 24.dp else 12.dp, bottom = 4.dp)
+            .clickable(onClick = entry.onClick)
+            .padding(start = INDENT_BASE + INDENT_STEP * (entry.level + 1))
+            .padding(vertical = 8.dp, horizontal = 8.dp)
     ) {
         Text(
-            title,
-            fontSize = if (isTopLevel) myTextSizes.xl else myTextSizes.lg,
-            fontWeight = FontWeight.Bold,
-            color = myColors.primary,
+            entry.title,
+            fontSize = myTextSizes.lg,
+            color = myColors.onBackground,
         )
-        Spacer(Modifier.height(4.dp))
-        Spacer(
+        Spacer(Modifier.height(2.dp))
+        Text(
+            entry.description,
+            fontSize = myTextSizes.sm,
+            color = myColors.onBackground / 0.75f,
+        )
+        Text(
+            status.first,
+            fontSize = myTextSizes.sm,
+            color = if (status.second) myColors.error else myColors.onBackground / 0.75f,
+        )
+    }
+}
+
+// kxkb heading format: bold yellow title underlined only as wide as the text itself,
+// top-level sections separated from the previous one by a full-width hairline.
+@Composable
+private fun SectionHeader(title: String, level: Int, isFirst: Boolean) {
+    val isTopLevel = level == 0
+    val hairline = with(LocalDensity.current) { 1.toDp() }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = if (isFirst) 12.dp else 10.dp, bottom = 2.dp)
+    ) {
+        if (isTopLevel && !isFirst) {
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .height(hairline)
+                    .background(myColors.primary)
+            )
+        }
+        // IntrinsicSize.Max = the text's full single-line width (Min collapses CJK
+        // text — no word breaks — to a single glyph)
+        Column(
             Modifier
-                .fillMaxWidth()
-                .height(if (isTopLevel) 2.dp else 1.dp)
-                .background(myColors.primary / (if (isTopLevel) 1f else 0.6f))
-        )
+                .width(IntrinsicSize.Max)
+                .padding(
+                    start = INDENT_BASE + INDENT_STEP * level,
+                    top = if (isTopLevel) 8.dp else 0.dp,
+                )
+        ) {
+            Text(
+                title,
+                fontSize = if (isTopLevel) myTextSizes.x2l else myTextSizes.xl,
+                fontWeight = FontWeight.Bold,
+                color = myColors.primary,
+                maxLines = 1,
+                softWrap = false,
+            )
+            Spacer(Modifier.height(2.dp))
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .height(if (isTopLevel) 2.5.dp else 1.5.dp)
+                    .background(myColors.primary)
+            )
+        }
     }
 }

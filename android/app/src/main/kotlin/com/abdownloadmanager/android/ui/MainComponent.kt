@@ -360,6 +360,8 @@ class MainComponent(
                     ShiroikumaUi(
                         ShiroikumaUiComponent(
                             ctx = ctx,
+                            pageManager = this,
+                            notificationSender = this,
                         )
                     )
                 }
