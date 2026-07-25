@@ -1,9 +1,11 @@
 package com.abdownloadmanager.android.pages.shiroikumaui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import androidx.compose.ui.graphics.Color
-import com.abdownloadmanager.android.BuildConfig
+import com.abdownloadmanager.android.automation.AutomationAuth
 import com.abdownloadmanager.android.storage.AppSettingsStorage
 import com.abdownloadmanager.android.storage.ShiroikumaUiSettings
 import com.abdownloadmanager.android.ui.configurable.android.item.ColorConfigurable
@@ -12,6 +14,7 @@ import com.abdownloadmanager.android.ui.configurable.android.item.SliderConfigur
 import com.abdownloadmanager.shared.pagemanager.NotificationSender
 import com.abdownloadmanager.shared.settings.CommonSettings
 import com.abdownloadmanager.shared.ui.configurable.Configurable
+import com.abdownloadmanager.shared.ui.configurable.item.BooleanConfigurable
 import com.abdownloadmanager.shared.ui.configurable.item.EnumConfigurable
 import com.abdownloadmanager.shared.ui.theme.ThemeManager
 import com.abdownloadmanager.shared.ui.widget.NotificationType
@@ -22,6 +25,7 @@ import ir.amirab.util.compose.asStringSource
 import ir.amirab.util.flow.mapStateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -57,13 +61,18 @@ class ShiroikumaUiComponent(
         data class Section(val title: String, override val level: Int) : Entry
         data class Item(val configurable: Configurable<*>, override val level: Int) : Entry
 
-        /** A tappable row: title, static description, and a live (status, isWarning) line. */
+        /**
+         * A tappable row: title, static description, and a live (status, isWarning) line —
+         * optionally with a secondary action pinned to the right of the row.
+         */
         data class Action(
             val title: String,
             val description: String,
-            val status: MutableStateFlow<Pair<String, Boolean>>,
+            val status: StateFlow<Pair<String, Boolean>>,
             val onClick: () -> Unit,
             override val level: Int,
+            val trailingLabel: String? = null,
+            val onTrailingClick: (() -> Unit)? = null,
         ) : Entry
     }
 
@@ -76,9 +85,18 @@ class ShiroikumaUiComponent(
         val isImport: Boolean,
     )
 
+    /** A yes/no dialog for the one destructive action on this page (token regeneration). */
+    data class ConfirmDialog(
+        val title: String,
+        val body: String,
+        val confirmLabel: String,
+        val onConfirm: () -> Unit,
+    )
+
     val exportDir = uiSettings.exportDir
     val showExportImportPanel = MutableStateFlow(false)
     val infoDialog = MutableStateFlow<InfoDialog?>(null)
+    val confirmDialog = MutableStateFlow<ConfirmDialog?>(null)
 
     /** (message, isWarning) for the "last export" line; refreshed on page open. */
     val latestExportStatus = MutableStateFlow("" to false)
@@ -129,7 +147,7 @@ class ShiroikumaUiComponent(
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val name = ShiroikumaExport.exportFileName(BuildConfig.VERSION_NAME)
+                    val name = ShiroikumaExport.exportFileName()
                     val target = File(dir, name)
                     target.parentFile?.mkdirs()
                     target.outputStream().use { out ->
@@ -193,6 +211,51 @@ class ShiroikumaUiComponent(
         ShiroikumaExport.restartApp(appContext)
     }
 
+    // ---- 保存復元 automation (token-gated headless export) ----
+
+    /** The abbreviated token, shown on the token row. */
+    val automationTokenStatus = AutomationAuth.token.mapStateFlow {
+        AutomationAuth.abbreviate(it) to false
+    }
+
+    fun copyAutomationToken() {
+        val clipboard = appContext.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        if (clipboard == null) {
+            notifyError("コピーできない", "クリップボードを取得できなかった。")
+            return
+        }
+        clipboard.setPrimaryClip(ClipData.newPlainText("自動化トークン", AutomationAuth.token.value))
+        notificationSender.sendNotification(
+            tag = "shiroikuma-automation",
+            title = "トークンをコピーした".asStringSource(),
+            description = "自由作業盤の「保存復元の設定」に貼り付けること。".asStringSource(),
+            type = NotificationType.Success,
+        )
+    }
+
+    fun askRegenerateAutomationToken() {
+        confirmDialog.value = ConfirmDialog(
+            title = "トークンを再生成？",
+            body = "今のトークンは無効になる。貼り付け済みの控え（自由作業盤の「保存復元の設定」など）は、" +
+                "新しいトークンに更新しないと動かなくなる。",
+            confirmLabel = "再生成",
+            onConfirm = {
+                AutomationAuth.regenerate()
+                confirmDialog.value = null
+                notificationSender.sendNotification(
+                    tag = "shiroikuma-automation",
+                    title = "トークンを再生成した".asStringSource(),
+                    description = "行をタップしてコピーし、貼り付け済みの控えを更新すること。".asStringSource(),
+                    type = NotificationType.Warning,
+                )
+            },
+        )
+    }
+
+    fun dismissConfirmDialog() {
+        confirmDialog.value = null
+    }
+
     private fun notifyError(title: String, description: String) {
         notificationSender.sendNotification(
             tag = "shiroikuma-eximport",
@@ -234,6 +297,29 @@ class ShiroikumaUiComponent(
                 status = latestExportStatus,
                 onClick = ::openExportImport,
                 level = 1,
+            )
+        )
+        add(
+            Entry.Item(
+                BooleanConfigurable(
+                    title = "自動エクスポート".asStringSource(),
+                    description = ("姉妹アプリの作業が、トークン付きインテントでこのアプリのエクスポートを" +
+                        "起動できるようにする。").asStringSource(),
+                    backedBy = AutomationAuth.enabled,
+                    describe = { (if (it) "有効" else "無効").asStringSource() },
+                ),
+                1,
+            )
+        )
+        add(
+            Entry.Action(
+                title = "自動化トークン",
+                description = "タップで全文をコピーし、姉妹アプリの設定に貼り付ける。",
+                status = automationTokenStatus,
+                onClick = ::copyAutomationToken,
+                level = 1,
+                trailingLabel = "再生成",
+                onTrailingClick = ::askRegenerateAutomationToken,
             )
         )
 
