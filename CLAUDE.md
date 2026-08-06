@@ -53,17 +53,25 @@ and bit-packs the semver into a versionCode: `(major shl 19) or (minor shl 9) or
 between tags, so the root `build.gradle.kts` is patched to take the version from `gradle.properties`
 instead:
 
-- `VERSION_NAME` in `gradle.properties` **tracks the latest upstream release tag** (currently `1.9.0`).
+- `VERSION_NAME` in `gradle.properties` **tracks the latest upstream release tag** (currently `1.10.1`).
 - `BUILD_NUMBER` is **our** increment. It starts at `1` and bumps by `1` on every build with changes.
-  **It must stay ≤ 99** (two decimal digits in the versionCode).
-- Fork `versionName` = `"<VERSION_NAME>+<BUILD_NUMBER>"` (e.g. `1.9.0+1`).
-- Fork `versionCode` = upstream packed code × 100 + `BUILD_NUMBER`
-  (e.g. `1.9.0` packs to `528896`, so `1.9.0+1` → `52889601`).
+  **It must stay ≤ 99** (two decimal digits in the versionCode). `gradle.properties` stores it as a
+  **plain integer** (`BUILD_NUMBER=8`) — the padding below is applied when the version string is built.
+- Fork `versionName` = `"<VERSION_NAME>+<BUILD_NUMBER>"` with the counter **zero-padded to three
+  digits** (e.g. `1.9.0+001`), so APK names and release tags sort in build order (`+010` after `+009`,
+  not before `+9`). The padding is text only.
+- Fork `versionCode` = upstream packed code × 100 + `BUILD_NUMBER`, **unpadded**
+  (e.g. `1.9.0` packs to `528896`, so `1.9.0+001` → `52889601`).
 - Output APK filename = `shiroikuma-shutokukanri_<VERSION_NAME>+<BUILD_NUMBER>_arm64-v8a.apk`
-  (e.g. `shiroikuma-shutokukanri_1.9.0+2_arm64-v8a.apk`).
+  (e.g. `shiroikuma-shutokukanri_1.9.0+002_arm64-v8a.apk`).
 
-So the first build is `+1` (`52889601`), the next build with changes is `+2` (`52889602`), and so on.
+So the first build is `+001` (`52889601`), the next build with changes is `+002` (`52889602`), and so on.
 When upstream's version climbs, the packed code climbs with it, keeping upgrades monotonic.
+
+**Never rename what is already built or published.** Builds and tags made before the padding switch
+(`1.10.1+5`, `1.10.1+7`, …) stay exactly as they are; the padding starts from `1.10.1+008`. For a while
+the padded names sort *before* the older unpadded ones (`+008` < `+7` as text) — that settles as the
+old builds age out.
 
 ### Building
 

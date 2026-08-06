@@ -33,7 +33,12 @@ gitVersion {
 // Fork versioning: VERSION_NAME tracks the upstream release, BUILD_NUMBER is our
 // increment (see gradle.properties). The upstream git-tag-derived version is unused
 // because the custom branch always sits between tags.
-version = "${project.property("VERSION_NAME")}+${project.property("BUILD_NUMBER")}".toVersion()
+// The counter is written zero-padded to three digits (1.10.1+008) so APK names and
+// release tags sort in build order; gradle.properties stores the plain integer, and
+// the versionCode keeps it plain too.
+version = "${project.property("VERSION_NAME")}+${
+    "%03d".format(project.property("BUILD_NUMBER").toString().toInt())
+}".toVersion()
 logger.lifecycle("version: $version")
 
 tasks.dependencyUpdates {
