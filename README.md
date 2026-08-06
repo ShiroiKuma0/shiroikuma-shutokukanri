@@ -42,7 +42,7 @@ The launcher and in-app icon are redrawn in the fork's traced style: a yellow-ou
 
 ## 📦 Lean Android packaging
 
-Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+7`) that stays upgrade-monotonic across upstream releases.
+Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+008`) that stays upgrade-monotonic across upstream releases.
 
 ---
 
