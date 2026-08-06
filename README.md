@@ -10,7 +10,7 @@ A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager)
 
 Installs **side-by-side** with the official app (app id `shiroikuma.shutokukanri`).
 
-**📥 Latest release: [`1.10.1+5`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
+**📥 Latest release: [`1.10.1+7`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
 
 </div>
 
@@ -30,7 +30,7 @@ The first section of the UI page saves and restores **every settable item in the
 
 ## 🤖 保存復元 automation — headless, token-gated export
 
-The same export runs **without any UI** when a sister app asks for it: `EXPORT_STATE` writes the one ZIP (honouring an overriding `path` and a subset of category `items`) and answers with its absolute path, real byte count, and human size; `LIST_CATEGORIES` answers with the selectable ids. Progress is broadcast as **real counts**, never a percentage. A master switch (default **off**) and a per-install token — 24 random bytes, compared in constant time, kept out of every export — sit at the bottom of the Export/Import section; the token row copies to the clipboard on tap and can be regenerated.
+The same export runs **without any UI** when a sister app asks for it: `EXPORT_STATE` writes the one ZIP (honouring an overriding `path` and a subset of category `items`) and answers with its absolute path, real byte count, and human size; `LIST_CATEGORIES` answers with the selectable ids, each carrying its parent and whether it is **on by default**; `CANCEL_EXPORT` stops a run in flight, unwinding at the next entry boundary and leaving the directory exactly as it found it — no short archive, no stray `.part`. Progress is broadcast as **real counts**, never a percentage. A master switch (default **off**) and a per-install token — 24 random bytes, compared in constant time, kept out of every export — sit at the bottom of the Export/Import section; the token row copies to the clipboard on tap and can be regenerated.
 
 ## 🟨 Fork-styled chrome
 
@@ -42,7 +42,7 @@ The launcher and in-app icon are redrawn in the fork's traced style: a yellow-ou
 
 ## 📦 Lean Android packaging
 
-Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+4`) that stays upgrade-monotonic across upstream releases.
+Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+7`) that stays upgrade-monotonic across upstream releases.
 
 ---
 
