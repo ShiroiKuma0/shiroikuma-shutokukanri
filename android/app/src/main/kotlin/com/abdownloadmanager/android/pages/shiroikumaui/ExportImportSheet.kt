@@ -62,9 +62,10 @@ fun ExportImportSheet(component: ShiroikumaUiComponent) {
     val exportDir by component.exportDir.collectAsState()
     val latestStatus by component.latestExportStatus.collectAsState()
 
+    // seeded from the same flag the automation picker is told about, so both start ticked alike
     val selection = remember {
         mutableStateMapOf<ShiroikumaExport.Cat, Boolean>().apply {
-            ShiroikumaExport.Cat.entries.forEach { put(it, true) }
+            ShiroikumaExport.Cat.entries.forEach { put(it, it.defaultOn) }
         }
     }
 
