@@ -18,6 +18,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /** Survives the individual receiver instances; the work outlives a single onReceive. */
 private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -28,7 +29,8 @@ private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
  * progress with real counts, and answers with the written path and size.
  *
  * `<pkg>.action.EXPORT_STATE` — run the normal category-ZIP export, honouring the `path`
- * and `items` extras; `<pkg>.action.LIST_CATEGORIES` — answer with the selectable ids.
+ * and `items` extras; `<pkg>.action.LIST_CATEGORIES` — answer with the selectable ids;
+ * `<pkg>.action.CANCEL_EXPORT` — stop the export in flight, fire-and-forget.
  *
  * The reply is always a **fresh broadcast** (EMUI drops live Binders — no ResultReceiver, no
  * PendingIntent — and severs the ordered-broadcast result between third-party apps), carries
@@ -41,6 +43,26 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
     override fun onReceive(context: Context, intent: Intent) {
         val appContext = context.applicationContext
         val action = intent.action ?: return
+        val pkg = appContext.packageName
+
+        // CANCEL_EXPORT answers nothing at all — so it is handled before the reply channel is
+        // demanded, and a caller that sends no reply_action still gets its export stopped.
+        if (action == "$pkg.$ACTION_CANCEL_EXPORT") {
+            val pending = goAsync()
+            receiverScope.launch {
+                try {
+                    if (AutomationAuth.enabled.value &&
+                        AutomationAuth.matches(intent.getStringExtra(EXTRA_TOKEN))
+                    ) {
+                        cancelExport(intent.getStringExtra(EXTRA_REPLY_ID))
+                    }
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
+
         val replyAction = intent.getStringExtra(EXTRA_REPLY_ACTION)?.takeIf { it.isNotBlank() }
         val replyPackage = intent.getStringExtra(EXTRA_REPLY_PACKAGE)?.takeIf { it.isNotBlank() }
         val replyId = intent.getStringExtra(EXTRA_REPLY_ID).orEmpty()
@@ -76,7 +98,6 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
 
         receiverScope.launch {
             try {
-                val pkg = appContext.packageName
                 when {
                     !AutomationAuth.enabled.value -> reply("ERROR:automation disabled")
                     !AutomationAuth.matches(intent.getStringExtra(EXTRA_TOKEN)) -> reply("ERROR:bad token")
@@ -93,13 +114,19 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
         }
     }
 
-    /** `id<TAB>label` per line, sub-options carrying their parent's id as a third field. */
+    /**
+     * `id<TAB>label<TAB>parent<TAB>on|off` per line — the parent field is empty for a top-level
+     * item, and the fourth field is this app stating whether the item starts ticked rather than
+     * leaving the picker to assume it.
+     */
     private fun listCategories(): String =
         "OK:" + Cat.entries.joinToString("\n") { cat ->
-            buildString {
-                append(cat.id).append('\t').append(cat.label)
-                cat.parentId?.let { append('\t').append(it) }
-            }
+            listOf(
+                cat.id,
+                cat.label,
+                cat.parentId.orEmpty(),
+                if (cat.defaultOn) "on" else "off",
+            ).joinToString("\t")
         }
 
     private suspend fun runExport(
@@ -109,7 +136,8 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
         replyPackage: String,
         reply: (String) -> Unit,
     ) {
-        // items: absent/empty = everything; every id must be known or nothing is written
+        // items: absent/empty = our default set — the `on` ones, which today is every category;
+        // every id must be known or nothing is written
         val requested = intent.getStringExtra(EXTRA_ITEMS)
             ?.split(',')
             ?.map { it.trim() }
@@ -117,7 +145,7 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
             .orEmpty()
         val cats: Set<Cat>
         if (requested.isEmpty()) {
-            cats = Cat.entries.toSet()
+            cats = Cat.entries.filter { it.defaultOn }.toSet()
         } else {
             val unknown = requested.filter { Cat.byId(it) == null }
             if (unknown.isNotEmpty()) {
@@ -150,20 +178,43 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
             replyId = replyId,
         )
         val target = File(dir, ShiroikumaExport.exportFileName())
+        // written as `<final-name>.part` and renamed only once it is whole, so a cancelled or
+        // failed export leaves the directory exactly as it found it — no short archive, no stray
+        // .part (the delete below runs on every path, success included)
+        val part = File(dir, "${target.name}.part")
+        val inFlight = RunningExport(replyId)
+        running.set(inFlight)
         try {
-            target.outputStream().use { out ->
-                ShiroikumaExport.export(context, cats, out) { done, total, label ->
+            part.outputStream().use { out ->
+                ShiroikumaExport.export(
+                    context = context,
+                    cats = cats,
+                    out = out,
+                    isCancelled = { inFlight.cancelled },
+                ) { done, total, label ->
                     progress.send(done, total, label)
                 }
             }
+            // a cancel landing after the last entry still counts — nothing is delivered
+            if (inFlight.cancelled) throw ShiroikumaExport.ExportCancelledException()
+            if (!part.renameTo(target)) error("cannot write: ${target.absolutePath}")
         } catch (t: Throwable) {
-            Log.e(TAG, "export failed", t)
-            runCatching { target.delete() }
-            reply(
-                if (!hasAllFilesAccess()) "ERROR:no-storage-access"
-                else "ERROR:${shortReason(t)}"
-            )
+            if (t is ShiroikumaExport.ExportCancelledException || inFlight.cancelled) {
+                Log.i(TAG, "export cancelled — nothing written")
+                // the terminal reply for the original request; the AtomicBoolean in `reply`
+                // keeps it from ever double-firing with a success
+                reply("ERROR:cancelled")
+            } else {
+                Log.e(TAG, "export failed", t)
+                reply(
+                    if (!hasAllFilesAccess()) "ERROR:no-storage-access"
+                    else "ERROR:${shortReason(t)}"
+                )
+            }
             return
+        } finally {
+            running.compareAndSet(inFlight, null)
+            runCatching { part.delete() }
         }
         val bytes = target.length()
         progress.send(cats.size, cats.size, "完了", force = true)
@@ -212,6 +263,31 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
 
         private const val ACTION_EXPORT_STATE = "action.EXPORT_STATE"
         private const val ACTION_LIST_CATEGORIES = "action.LIST_CATEGORIES"
+        private const val ACTION_CANCEL_EXPORT = "action.CANCEL_EXPORT"
+
+        /** The export in flight — the contract forbids two at once, so there is at most one. */
+        private val running = AtomicReference<RunningExport?>(null)
+
+        private class RunningExport(val replyId: String) {
+            @Volatile
+            var cancelled = false
+        }
+
+        /**
+         * Raise the flag on the running export: it unwinds at the next entry boundary, deletes
+         * its `.part` and answers the original request with `ERROR:cancelled`. This app runs the
+         * export inside the receiver's own `goAsync` window — no foreground service and no
+         * wakelock to release — so `pending.finish()` on the reply is the whole teardown.
+         *
+         * Nothing running, or a [replyId] naming a different run, is a **silent no-op**: the
+         * action is safe to send at any time, including after the export already finished.
+         */
+        private fun cancelExport(replyId: String?) {
+            val inFlight = running.get() ?: return
+            if (!replyId.isNullOrBlank() && replyId != inFlight.replyId) return
+            Log.i(TAG, "cancel requested for reply[${inFlight.replyId}]")
+            inFlight.cancelled = true
+        }
 
         private const val EXTRA_TOKEN = "token"
         private const val EXTRA_PATH = "path"

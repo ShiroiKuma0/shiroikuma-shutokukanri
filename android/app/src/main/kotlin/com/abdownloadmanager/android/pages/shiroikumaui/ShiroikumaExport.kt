@@ -89,8 +89,18 @@ object ShiroikumaExport : KoinComponent {
      * A selectable category; `id` is the JSON file name (`<id>.json`) inside the ZIP, and the
      * id the automation contract accepts in its `items` extra. A category with a [parentId]
      * is a *sub-option* of that parent — its own independently selectable part of the export.
+     *
+     * [defaultOn] is this app's own answer to "does this item start ticked?" — reported as the
+     * fourth `LIST_CATEGORIES` field and used to seed the in-app picker, so both start from the
+     * same place. Everything here stays `on`: nothing this app exports is large, derived *and*
+     * re-creatable (the case the flag exists for), so nothing earns an `off`.
      */
-    enum class Cat(val id: String, val label: String, val parentId: String? = null) {
+    enum class Cat(
+        val id: String,
+        val label: String,
+        val parentId: String? = null,
+        val defaultOn: Boolean = true,
+    ) {
         APPEARANCE("appearance", "外観（テーマ・色・書体）"),
         // the imported .ttf/.otf files themselves — the one bulky part of the backup
         APPEARANCE_FONTS("appearance.fonts", "書体ファイル", parentId = "appearance"),
@@ -260,17 +270,25 @@ object ShiroikumaExport : KoinComponent {
         }
     }
 
+    /** Thrown out of [export] when [export]'s `isCancelled` goes up between entries. */
+    class ExportCancelledException : Exception("cancelled")
+
     /**
      * Write a ZIP of the selected categories to [out] — the headless export core, shared by
      * the Export/Import panel and the automation receiver.
      *
      * [onProgress] is called once per category with `(done, total, label)`, counting real
      * categories (never a percentage).
+     *
+     * [isCancelled] is read at every entry boundary — never mid-`write()` — and unwinds the
+     * export with an [ExportCancelledException] as soon as it answers true. Cleaning up after
+     * that (deleting the partial file) belongs to whoever opened [out].
      */
     suspend fun export(
         context: Context,
         cats: Set<Cat>,
         out: OutputStream,
+        isCancelled: () -> Boolean = { false },
         onProgress: (done: Int, total: Int, label: String) -> Unit = { _, _, _ -> },
     ) {
         // deterministic, parent-before-child order regardless of how the set was built
@@ -286,9 +304,10 @@ object ShiroikumaExport : KoinComponent {
             }
             writeEntry(zip, "manifest.json", json.encodeToString(JsonObject.serializer(), manifest))
             ordered.forEachIndexed { index, cat ->
+                if (isCancelled()) throw ExportCancelledException()
                 onProgress(index + 1, ordered.size, cat.label)
                 if (cat == Cat.APPEARANCE_FONTS) {
-                    exportFonts(context, zip)
+                    exportFonts(context, zip, isCancelled)
                     return@forEachIndexed
                 }
                 val payload = when (cat) {
@@ -336,8 +355,10 @@ object ShiroikumaExport : KoinComponent {
         zip.closeEntry()
     }
 
-    private fun exportFonts(context: Context, zip: ZipOutputStream) {
+    private fun exportFonts(context: Context, zip: ZipOutputStream, isCancelled: () -> Boolean) {
         ShiroikumaFonts.fontsDir(context).listFiles()?.forEach { f ->
+            // the bulky part of the backup — check between files, never mid-write
+            if (isCancelled()) throw ExportCancelledException()
             if (!f.isFile) return@forEach
             zip.putNextEntry(ZipEntry("fonts/${f.name}"))
             zip.write(f.readBytes())
