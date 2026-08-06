@@ -23,6 +23,7 @@ plugins {
     id(Plugins.aboutLibrariesAndroid)
 }
 // Fork versioning (see gradle.properties): versionName = "<VERSION_NAME>+<BUILD_NUMBER>",
+// the counter zero-padded to three digits by the root build script (1.10.1+008);
 // versionCode = upstream packed semver * 100 + BUILD_NUMBER (BUILD_NUMBER must stay <= 99).
 val forkVersionName = getAppVersionString()
 val forkBuildNumber = project.property("BUILD_NUMBER").toString().toInt()
