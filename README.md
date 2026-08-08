@@ -6,11 +6,11 @@
 
 **AB Download Manager in 白い熊 black and yellow — Android only, restyled end to end.**
 
-A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager) with **major additions**: a pure-yellow-on-black 白い熊 theme, a full appearance-tuning settings page (12 settable colors, external fonts, text-size and UI scale, list spacing), category-based settings export/import with a token-gated headless automation export, fork-styled dialogs and notifications, and a traced black–yellow icon.
+A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager) with **major additions**: a pure-yellow-on-black 白い熊 theme, a full appearance-tuning settings page (12 settable colors, external fonts, text-size and UI scale, list spacing), category-based settings export/import with a token-gated headless automation export, fork-styled dialogs and notifications that follow you out of the app, and a traced black–yellow icon.
 
 Installs **side-by-side** with the official app (app id `shiroikuma.shutokukanri`).
 
-**📥 Latest release: [`1.10.1+008`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
+**📥 Latest release: [`1.10.1+011`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
 
 </div>
 
@@ -36,13 +36,17 @@ The same export runs **without any UI** when a sister app asks for it: `EXPORT_S
 
 Every dialog (add, edit, queues, categories, download info, finished, updater, prompts, …) and every in-app flash notification carries the fork's solid yellow border, drawn from the active theme so it follows your color overrides too.
 
+## 🔔 The finished-download box, outside the app too
+
+A download that finishes while you are reading something else announces itself with **the same black box and yellow border** you see in-app — not the white system pill, which cannot be styled at all. It is a real overlay window rendering the app's own notification, so your colors, font and text scale come along; it never takes focus or swallows a tap meant for whatever is underneath, and it falls back to the plain toast if the "display over other apps" permission is withheld. A **short double buzz** lands with it, on by default and switchable in settings.
+
 ## 🐻‍❄️ Traced black–yellow icon
 
 The launcher and in-app icon are redrawn in the fork's traced style: a yellow-outlined download glyph with black interiors on a black square.
 
 ## 📦 Lean Android packaging
 
-Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+008`) that stays upgrade-monotonic across upstream releases.
+Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+011`) that stays upgrade-monotonic across upstream releases.
 
 ---
 
