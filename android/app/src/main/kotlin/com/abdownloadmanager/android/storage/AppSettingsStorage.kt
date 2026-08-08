@@ -83,4 +83,5 @@ class AppSettingsStorage(
     override val userAgent = from(AppSettingsModel.userAgent)
 
     val browserIconInLauncher = from(AppSettingsModel.browserIconInLauncher)
+    val notificationVibration = from(AppSettingsModel.notificationVibration)
 }

@@ -51,6 +51,8 @@ data class AppSettingsModel(
     override val useCategoryByDefault: Boolean,
     override val userAgent: String,
     val browserIconInLauncher: Boolean,
+    // a short buzz when a download finishes
+    val notificationVibration: Boolean,
 ) : IAppSettingsModel {
     companion object {
     }
@@ -62,6 +64,8 @@ private val AndroidSettingsSchema = S.typeSafeObject(
 
         prop(AppSettingsModel::browserIconInLauncher) bind S.boolean()
             .catch(PlatformDefaultSettings::browserIconInLauncher)
+        prop(AppSettingsModel::notificationVibration) bind S.boolean()
+            .catch(PlatformDefaultSettings::notificationVibration)
     },
     factory = {
         PlatformAppSettingsModel(
@@ -103,6 +107,7 @@ private val AndroidSettingsSchema = S.typeSafeObject(
             userAgent = it[AppSettingsModel::userAgent],
 
             browserIconInLauncher = it[AppSettingsModel::browserIconInLauncher],
+            notificationVibration = it[AppSettingsModel::notificationVibration],
         )
     }
 ).asSettingsSchema()

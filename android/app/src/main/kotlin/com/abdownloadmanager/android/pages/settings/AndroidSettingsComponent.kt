@@ -91,6 +91,11 @@ class AndroidSettingsComponent(
             ),
             ConfigurableGroup(
                 nestedConfigurable = listOf(
+                    AndroidSettings.vibrateOnDownloadFinish(appSettings),
+                )
+            ),
+            ConfigurableGroup(
+                nestedConfigurable = listOf(
                     CommonSettings.autoShowDownloadProgressWindow(appSettings),
                     CommonSettings.showDownloadFinishWindow(appSettings),
                 )

@@ -6,4 +6,6 @@ actual object PlatformDefaultSettings : DefaultAppSettings() {
     override val useSparseFileAllocation: Boolean get() = false
 
     val browserIconInLauncher: Boolean get() = false
+    // a short buzz when a download finishes
+    val notificationVibration: Boolean get() = true
 }
