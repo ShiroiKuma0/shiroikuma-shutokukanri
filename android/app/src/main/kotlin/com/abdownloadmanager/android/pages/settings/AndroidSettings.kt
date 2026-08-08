@@ -46,6 +46,15 @@ object AndroidSettings {
         )
     }
 
+    fun displayOverOtherApps(): PermissionConfigurable {
+        val permission = ABDMPermissions.DisplayOverOtherAppsPermission
+        return PermissionConfigurable(
+            title = permission.title,
+            description = permission.description,
+            backedBy = MutableStateFlow(permission),
+        )
+    }
+
     fun browserIconInLauncher(
         appSettingsStorage: AppSettingsStorage
     ): BooleanConfigurable {

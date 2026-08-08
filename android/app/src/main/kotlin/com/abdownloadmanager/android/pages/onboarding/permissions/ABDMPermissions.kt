@@ -74,6 +74,25 @@ object ABDMPermissions {
         }
     }
 
+    // lets the app draw its own themed flash notifications over other apps,
+    // instead of the unstylable white system toast
+    val DisplayOverOtherAppsPermission = AppPermission(
+        title = "他のアプリの上に表示".asStringSource(),
+        description = "アプリの外にいるときも、完了通知を黒地に黄色の枠で表示する。許可しないと、標準の白いトーストになる。".asStringSource(),
+        icon = MyIcons.info,
+        isOptional = true,
+        permissions = listOf(),
+        permissionRequestFactory = CustomPermissionActivityLauncher(::requestDisplayOverOtherAppsPermission),
+        permissionChecker = object : PermissionRequestChecker {
+            override fun isGranted(
+                context: Context,
+                appPermission: AppPermission
+            ): Boolean {
+                return canDisplayOverOtherApps(context)
+            }
+        }
+    )
+
     // these are not introduced in the main screen.
     val BatteryOptimizationPermission = AppPermission(
         title = Res.string.permissions_ignore_battery_optimization_title.asStringSource(),

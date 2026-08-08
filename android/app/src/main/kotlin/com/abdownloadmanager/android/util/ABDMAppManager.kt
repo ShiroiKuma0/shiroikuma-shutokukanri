@@ -97,6 +97,20 @@ class ABDMAppManager(
         uiNotificationHandlers.update { (it - 1).coerceAtLeast(0) }
     }
 
+    private val overlayNotificationWindow by lazy { OverlayNotificationWindow(context) }
+
+    private fun setOverlayNotificationVisible(visible: Boolean) {
+        // deliberately the app scope and not the composition's: the window must still come
+        // down even if the fallback composition itself is torn down in the meantime
+        scope.launch(Dispatchers.Main) {
+            if (visible) {
+                overlayNotificationWindow.show()
+            } else {
+                overlayNotificationWindow.hide()
+            }
+        }
+    }
+
     private fun registerAsFallbackNotification(): () -> Unit {
         val context = context
         var lastNotificationSound = 0L
@@ -106,6 +120,17 @@ class ABDMAppManager(
             val uiHandlers by uiNotificationHandlers.collectAsState()
             if (uiHandlers > 0) {
                 return@headlessComposeRuntime
+            }
+            // outside the app we float the themed box in an overlay window whenever we are
+            // allowed to draw over other apps, and only otherwise fall back to the system toast
+            val useOverlay = notifications.isNotEmpty() && overlayNotificationWindow.canShow()
+            DisposableEffect(useOverlay) {
+                if (useOverlay) {
+                    setOverlayNotificationVisible(true)
+                    onDispose { setOverlayNotificationVisible(false) }
+                } else {
+                    onDispose { }
+                }
             }
             notifications
                 .firstOrNull()?.let { notification ->
@@ -121,11 +146,17 @@ class ABDMAppManager(
                         }
                         val fullTitle = "$iconText $title - $description"
                         val toastJob = scope.launch(Dispatchers.Main) {
-                            val toast = Toast.makeText(
-                                context,
-                                fullTitle,
-                                Toast.LENGTH_LONG,
-                            )
+                            // the overlay window went up (or failed to) before this runs,
+                            // so it decides whether a toast is still needed
+                            val toast = if (overlayNotificationWindow.isShowing()) {
+                                null
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    fullTitle,
+                                    Toast.LENGTH_LONG,
+                                )
+                            }
                             val now = System.currentTimeMillis()
                             val sinceLastSoundMillis = now - lastNotificationSound
                             // don't repeatedly play notification!
@@ -137,10 +168,10 @@ class ABDMAppManager(
                                     it.printStackTrace()
                                 }
                             }
-                            toast.show()
+                            toast?.show()
                             currentCoroutineContext().job.invokeOnCompletion {
                                 it?.let {
-                                    toast.cancel()
+                                    toast?.cancel()
                                 }
                             }
                         }
