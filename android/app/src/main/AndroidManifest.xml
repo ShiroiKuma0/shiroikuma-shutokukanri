@@ -15,6 +15,8 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!--    Themed flash notifications on top of other apps, instead of the system toast-->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <application
             android:name=".ABDMApp"
             android:theme="@style/Theme.ABDownloadManager"
