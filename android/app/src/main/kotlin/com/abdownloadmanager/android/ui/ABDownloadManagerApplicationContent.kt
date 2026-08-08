@@ -54,6 +54,44 @@ fun ABDownloadManagerApplicationContent(
     abdmAppManager: ABDMAppManager,
     content: @Composable () -> Unit,
 ) {
+    ABDMThemedEnvironment(
+        languageManager = languageManager,
+        themeManager = themeManager,
+        appSettingsStorage = appSettingsStorage,
+        shiroikumaUiSettings = shiroikumaUiSettings,
+        iconResolver = iconResolver,
+        notificationManager = notificationManager,
+    ) {
+        ResponsiveBox {
+            ProvideSizeUnits(
+                appRepository
+            ) {
+                PopUpContainer {
+                    content()
+                }
+                // placed after PopUpContainer so flash notifications
+                // draw above dialogs, on every activity
+                FlashNotificationArea(abdmAppManager)
+            }
+        }
+    }
+}
+
+/**
+ * Everything a piece of app UI needs to look like the app: language, common settings, the
+ * notification manager and the 白い熊 theme (colours, font, text size). Shared by the activity
+ * content and by the notification overlay window, which is not hosted in an activity at all.
+ */
+@Composable
+fun ABDMThemedEnvironment(
+    languageManager: LanguageManager,
+    themeManager: ThemeManager,
+    appSettingsStorage: BaseAppSettingsStorage,
+    shiroikumaUiSettings: ShiroikumaUiSettings,
+    iconResolver: IIconResolver,
+    notificationManager: NotificationManager,
+    content: @Composable () -> Unit,
+) {
     val configurableRendererRegistry = remember {
         ConfigurableRendererRegistry {
             listOf(
@@ -91,18 +129,7 @@ fun ABDownloadManagerApplicationContent(
                         textSizeScale = shiroikumaUi.textSizeScale,
                     ) {
                         CompositionLocalProvider(LocalShiroikumaUi provides shiroikumaUi) {
-                            ResponsiveBox {
-                                ProvideSizeUnits(
-                                    appRepository
-                                ) {
-                                    PopUpContainer {
-                                        content()
-                                    }
-                                    // placed after PopUpContainer so flash notifications
-                                    // draw above dialogs, on every activity
-                                    FlashNotificationArea(abdmAppManager)
-                                }
-                            }
+                            content()
                         }
                     }
                 }
@@ -113,6 +140,41 @@ fun ABDownloadManagerApplicationContent(
 
 // The 白い熊 UI settings model, available anywhere in the tree (list spacing etc.).
 val LocalShiroikumaUi = compositionLocalOf { ShiroikumaUiModel() }
+
+/**
+ * The very same flash notifications, for the window that
+ * [com.abdownloadmanager.android.util.OverlayNotificationWindow] floats over other apps when the
+ * app itself is not on screen. The box is placed by the window (bottom, above the navigation bar),
+ * so only the horizontal inset is applied here.
+ */
+@Composable
+fun ABDMOverlayNotificationContent(
+    languageManager: LanguageManager,
+    themeManager: ThemeManager,
+    appSettingsStorage: BaseAppSettingsStorage,
+    shiroikumaUiSettings: ShiroikumaUiSettings,
+    iconResolver: IIconResolver,
+    appRepository: BaseAppRepository,
+    notificationManager: NotificationManager,
+) {
+    ABDMThemedEnvironment(
+        languageManager = languageManager,
+        themeManager = themeManager,
+        appSettingsStorage = appSettingsStorage,
+        shiroikumaUiSettings = shiroikumaUiSettings,
+        iconResolver = iconResolver,
+        notificationManager = notificationManager,
+    ) {
+        ProvideSizeUnits(appRepository) {
+            NotificationArea(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .navigationBarsPadding()
+            )
+        }
+    }
+}
 
 /**
  * Themed flash notifications (black surface, yellow border) rendered on every activity
