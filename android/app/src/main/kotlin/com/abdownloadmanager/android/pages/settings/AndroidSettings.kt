@@ -55,6 +55,23 @@ object AndroidSettings {
         )
     }
 
+    fun vibrateOnDownloadFinish(
+        appSettingsStorage: AppSettingsStorage
+    ): BooleanConfigurable {
+        return BooleanConfigurable(
+            title = "完了時に振動".asStringSource(),
+            description = "ダウンロードが終わったときに、短く二回振動する。".asStringSource(),
+            backedBy = appSettingsStorage.notificationVibration,
+            describe = {
+                if (it) {
+                    Res.string.enabled
+                } else {
+                    Res.string.disabled
+                }.asStringSource()
+            }
+        )
+    }
+
     fun browserIconInLauncher(
         appSettingsStorage: AppSettingsStorage
     ): BooleanConfigurable {

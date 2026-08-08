@@ -221,6 +221,7 @@ object ShiroikumaExport : KoinComponent {
 
         Cat.NOTIFICATIONS -> listOf(
             boolField("notificationSound", appSettings.notificationSound),
+            boolField("notificationVibration", appSettings.notificationVibration),
             stringField("generalNotificationSound", appSettings.generalNotificationSound),
             stringField("successNotificationSound", appSettings.successNotificationSound),
             stringField("errorNotificationSound", appSettings.errorNotificationSound),
