@@ -58,6 +58,8 @@ data class AppSettingsModel(
     override val useCategoryByDefault: Boolean = true,
     override val userAgent: String = "",
     val browserIconInLauncher: Boolean = false,
+    // a short buzz when a download finishes
+    val notificationVibration: Boolean = true,
 ) : IAppSettingsModel {
     companion object {
         val default: AppSettingsModel get() = AppSettingsModel()
@@ -105,6 +107,7 @@ data class AppSettingsModel(
             val useCategoryByDefault = booleanKeyOf("useCategoryByDefault")
             val userAgent = stringKeyOf("userAgent")
             val browserIconInLauncher = booleanKeyOf("browserIconInLauncher")
+            val notificationVibration = booleanKeyOf("notificationVibration")
         }
 
 
@@ -156,6 +159,7 @@ data class AppSettingsModel(
                 useCategoryByDefault = source.get(Keys.useCategoryByDefault) ?: default.useCategoryByDefault,
                 userAgent = source.get(Keys.userAgent) ?: default.userAgent,
                 browserIconInLauncher = source.get(Keys.browserIconInLauncher) ?: default.browserIconInLauncher,
+                notificationVibration = source.get(Keys.notificationVibration) ?: default.notificationVibration,
             )
         }
 
@@ -198,6 +202,7 @@ data class AppSettingsModel(
                 put(Keys.useCategoryByDefault, focus.useCategoryByDefault)
                 put(Keys.userAgent, focus.userAgent)
                 put(Keys.browserIconInLauncher, focus.browserIconInLauncher)
+                put(Keys.notificationVibration, focus.notificationVibration)
             }
         }
     }
@@ -277,4 +282,5 @@ class AppSettingsStorage(
     override val userAgent = from(AppSettingsModel.userAgent)
 
     val browserIconInLauncher = from(AppSettingsModel.browserIconInLauncher)
+    val notificationVibration = from(AppSettingsModel.notificationVibration)
 }

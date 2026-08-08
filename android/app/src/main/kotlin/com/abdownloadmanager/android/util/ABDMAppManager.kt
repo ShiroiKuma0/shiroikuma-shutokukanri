@@ -59,6 +59,19 @@ class ABDMAppManager(
         return appSettingsStorage.notificationSound.value
     }
 
+    private val notificationVibrator by lazy { NotificationVibrator(context) }
+
+    /**
+     * Buzzes when a download finishes, wherever we are — on an app screen or in another app
+     * entirely — as long as the setting is on.
+     */
+    private fun vibrateOnFinish() {
+        if (!appSettingsStorage.notificationVibration.value) {
+            return
+        }
+        notificationVibrator.vibrate()
+    }
+
     fun boot() {
         booted.action {
             registerAsFallbackNotification()
@@ -209,6 +222,7 @@ class ABDMAppManager(
             }
         }
         if (it is DownloadManagerEvents.OnJobCompleted) {
+            vibrateOnFinish()
             sendNotification(
                 tag = "downloadId=${it.downloadItem.id}",
                 description = it.downloadItem.name.asStringSource(),
