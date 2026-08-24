@@ -10,7 +10,7 @@ A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager)
 
 Installs **side-by-side** with the official app (app id `shiroikuma.shutokukanri`).
 
-**📥 Latest release: [`1.10.1+011`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases)
+**📥 Latest release: [`1.10.2+001`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases) · [changelog »](CHANGELOG.md)
 
 </div>
 
@@ -46,7 +46,7 @@ The launcher and in-app icon are redrawn in the fork's traced style: a yellow-ou
 
 ## 📦 Lean Android packaging
 
-Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.1+011`) that stays upgrade-monotonic across upstream releases.
+Android APK only (the desktop app is not shipped), arm64-v8a only, signed releases, and fork versioning `<upstream>+<build>` (e.g. `1.10.2+001`) that stays upgrade-monotonic across upstream releases.
 
 ---
 

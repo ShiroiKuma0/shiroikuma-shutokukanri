@@ -1,3 +1,214 @@
+# Changelog — 白い熊 取得管理
+
+This file carries **two histories**: the fork's own releases first, then upstream
+[AB Download Manager](https://github.com/amir1376/ab-download-manager)'s changelog below, unchanged.
+Fork releases are named `<upstream version>+<build>`; each says which upstream release it is built on.
+
+## 白い熊 取得管理 1.10.2+001 — 2026-08-24
+
+Built on upstream **v1.10.2**.
+
+### Changed
+
+- Rebased onto upstream v1.10.2 — a clean replay, no conflicts; all 26 fork commits went across untouched.
+- Fork counter reset for the new upstream line: `versionName 1.10.2+001`, `versionCode 52941001`
+  (upstream packed `529410` × 100 + 1), above the previous line's highest build (`52940912`), so it
+  installs straight over any earlier fork build.
+
+### Inherited from upstream 1.10.2
+
+- **Custom DNS / DNS-over-HTTPS**, present on Android as a new **DNS** row in Settings → network,
+  directly under the proxy row: System resolver, or a validated `https://` DoH endpoint (upstream #1380).
+- Native messaging manifests for additional browsers (#1366) and more browser-integration installation links.
+- Refreshed translations across ~25 locales, dependency updates, and Gradle wrapper 9.6.1 → 9.7.1.
+- Not shipped here: the tray-menu additions, the CLI `Win32Exception` fix and the donation-link change
+  are desktop-side, and this fork ships the Android APK only.
+
+## 白い熊 取得管理 1.10.1+011 — 2026-08-08
+
+Built on upstream `master` at `db9ffad7`, seven commits past v1.10.1.
+
+### Added
+
+- **The finished-download box now floats over other apps.** Outside the app a completed download used
+  to arrive as a plain white system toast — all `Toast` can render for a background app. It now gets its
+  own `TYPE_APPLICATION_OVERLAY` window hosting the very notification the app draws in-UI, so the black
+  surface, yellow border, colour overrides, font and text scale all come along; it sits 96 dp above the
+  bottom edge and fades like a toast.
+- The overlay window is `NOT_FOCUSABLE` and `NOT_TOUCHABLE`, so it cannot take focus or swallow a tap
+  meant for the app underneath, and putting it up is fully guarded — the toast is decided *after* the
+  attempt rather than from a permission pre-check, so a refused window still yields the old toast.
+- New optional permission 「他のアプリの上に表示」 (`SYSTEM_ALERT_WINDOW`), next to the
+  battery-optimization row in settings.
+- **A short double buzz when a download finishes** — two 60 ms taps 90 ms apart, riding on the completion
+  event so it arrives in-app and over other apps alike, sent with notification audio attributes so Do Not
+  Disturb silences it like the notification sound. A failed download stays silent.
+- 「完了時に振動」 switch below the sound group, **on by default** (existing installs included), and part
+  of the notification category of the settings ZIP.
+
+## 白い熊 取得管理 1.10.1+008 — 2026-08-06
+
+Built on upstream `master` at `db9ffad7`. Functionally identical to `1.10.1+7`.
+
+### Changed
+
+- **Zero-padded build counter.** The root build script formats the counter `"%03d"`, so the versionName,
+  the APK filename and the release tag all read `1.10.1+008`. Unpadded counters sort wrongly as text
+  (`+10` before `+3`), burying the newest build in directory and release listings.
+- The padding is text only: `gradle.properties` still stores the plain integer and the `versionCode` stays
+  `packed code × 100 + BUILD_NUMBER`, so the counter cap remains 99 and the headroom is unchanged.
+- Nothing already built or published was renamed; `1.10.1+7` and earlier tags stay as they are.
+
+## 白い熊 取得管理 1.10.1+7 — 2026-08-06
+
+Built on upstream `master` at `db9ffad7`, seven commits past v1.10.1.
+
+### Added
+
+- **`CANCEL_EXPORT`** — a running 保存復元 export can be called off. Handled *before* the reply channel is
+  demanded, so a caller that sends no `reply_action` still stops its export; fire-and-forget, with an
+  unknown `reply_id` a silent no-op. The export core reads an `isCancelled` flag at **every entry boundary,
+  fonts included, never mid-`write()`**, and the archive is written as `<final-name>.part` and renamed only
+  once whole, the part deleted in a `finally` — so a cancelled run leaves the directory exactly as it found
+  it. Terminal `ERROR:cancelled` goes through the guarded reply lambda; no foreground service, no wakelock.
+- **Every category states a default on/off.** `LIST_CATEGORIES` now answers the four-field line
+  `id⇥label⇥parent⇥on|off` (empty parent for a top-level item), so the in-app picker and 白い熊 自由作業盤's
+  picker start from the same answer; an absent `items` extra means "the on ones".
+
+### Changed
+
+- Rebased onto upstream `master` past v1.10.1, picking up dependency updates, the new Android multiplatform
+  library plugin, the Gradle-script refactor and a Win32 startup fix. Gradle wrapper 9.5.1 → 9.6.1.
+- `compileSdk`/`targetSdk` now follow upstream's version catalog (API 37, was a hardcoded 36).
+
+## 白い熊 取得管理 1.10.1+5 — 2026-07-25
+
+Built on upstream **v1.10.1**.
+
+### Added
+
+- **保存復元 automation — token-gated headless export.** Two exported broadcast actions, gated on a master
+  switch and a secret token, running with no Activity and no interaction:
+  `EXPORT_STATE` runs the ordinary category-ZIP export headlessly (a `path` extra overrides the configured
+  directory, an `items` extra exports a subset, an unknown id aborts and writes nothing) and answers
+  `OK:<absolute path>|<bytes>|<human size>|<n> categories`; `LIST_CATEGORIES` answers instantly with one
+  `id⇥label` line per selectable category, sub-options carrying their parent's id.
+- **Progress broadcasts with real counts, never a percentage** — `区分 3/10 — 外観（テーマ・色・書体）`, plus
+  structured `current`/`total`/`unit` extras, throttled to one per 500 ms with a forced final one.
+- **The reply is always a fresh broadcast** (`setPackage` + `FLAG_INCLUDE_STOPPED_PACKAGES`), never a live
+  Binder — no `ResultReceiver`, no `PendingIntent`, no `Messenger`, and never dependent on the
+  ordered-broadcast result, which EMUI severs between third-party apps. Exactly one terminal reply per
+  request, guarded by an `AtomicBoolean`; a partial ZIP is deleted when an export fails. Distinct errors:
+  `automation disabled`, `bad token`, `no-directory`, `no-storage-access`.
+- **Automation switch + token rows** inside the existing エクスポート / インポート section: 「自動エクスポート」
+  master switch (**default off**), and 「自動化トークン」 showing the token abbreviated, tap-to-copy with a
+  confirmation, 「再生成」 behind a confirm dialog. The token is 24 `SecureRandom` bytes, hex-encoded,
+  generated lazily, compared constant-time (`MessageDigest.isEqual`), and stored in its own SharedPreferences
+  file — so it can never travel inside an export ZIP.
+- **Font files became their own selectable part** — `appearance.fonts`, a sub-option of `appearance`,
+  exportable and importable on its own and shown indented under 外観 in the checklist.
+
+### Changed
+
+- **Family backup-name convention** — every backup, from the panel and the automation path alike, is now
+  `shiroikuma-shutokukanri_<yyyy-MM-dd_HH-mm-ss>.zip`: no version, no `-export` infix, so sister apps'
+  backups sort uniformly in one directory. The app version moved into `manifest.json` as `appVersion`, and
+  the old names stay recognised when the page looks for the latest export.
+- **The export core is one headless-callable function** — `export(categories, OutputStream, onProgress)` —
+  with the panel and the automation receiver as two thin callers; no export logic is duplicated. It reads
+  the download categories straight from storage when the download system has not booted, so an automated
+  backup can no longer capture an empty category list.
+
+## 白い熊 取得管理 1.10.1+4 — 2026-07-25
+
+Built on upstream **v1.10.1** (new speed limiter, Ktor-based integration server, per-download API keys).
+
+### Added
+
+- **Category-based settings export/import** — the first section of the UI page: a settable export directory
+  queried on page open for the latest export; export as **a ZIP of plain JSON, one file per category**, plus
+  a manifest and the imported font files as real files under `fonts/`; **nine selectable categories** covering
+  every settable item in the app (appearance, general, download settings, notifications, system/API, proxy,
+  per-host settings, download categories, browser bookmarks); **merge-not-wipe import** tolerating missing and
+  extra keys, upserting per-host rows and bookmarks, keeping this install's category item lists and never
+  touching device-local state, where one failing category never fails the whole import; black yellow-bordered
+  success dialogs where export **OK** and import **後で** close the whole chain and **今すぐ再起動** relaunches
+  the app; and an Arcanechat-style pill button row.
+
+### Changed
+
+- **kxkb-format UI page** — headings underlined exactly as wide as their text (20 sp bold sections, 18 sp
+  sub-headings), a 1 px full-width hairline between top-level sections, and a 36 dp + 18 dp-per-tier indent
+  ladder.
+- Rebased onto upstream v1.10.1.
+
+### Fixed
+
+- **Directory picker**: a null initial directory was stringified into the literal path `"null"` and browsed;
+  it now stays absent and the picker falls back to the public Downloads directory (a latent upstream bug,
+  exposed by the export-directory picker).
+
+## 白い熊 取得管理 1.9.2+2 — 2026-07-16
+
+Built on upstream **v1.9.2**.
+
+### Changed
+
+- **Themed flash notifications on every screen** — the "Finished" flash after a completed download, and every
+  other in-app flash (cancelled, errors, info, loading), now renders as the fork-styled card (black surface,
+  solid yellow border) on **all** activities: the in-app browser, the download-completion dialog, the
+  add-download pages — not just the main screen. Previously every screen other than the main one fell back to
+  Android's unstylable white system toast. That fallback now fires only when no app UI is visible at all,
+  tracked by a visible-screen counter so overlapping activity transitions cannot re-enable it prematurely.
+  Flash cards draw above the dialog layer, matching the old toast's stacking.
+
+## 白い熊 取得管理 1.9.2+1 — 2026-07-02
+
+First published release of the fork, built on upstream **v1.9.2**. Everything below is what the fork adds
+on top of stock.
+
+### Added
+
+- **白い熊 theme** (id `shiroikuma`) — pure black `#000000` backgrounds and surfaces, pure yellow `#FFFF00`
+  text, icons, accents and borders. **Default theme for fresh installs**; a one-time seed switches existing
+  installs over on first boot after upgrade. Coexists with all upstream themes.
+- **白い熊 取得管理 UI settings page** — a dedicated appearance page (sectioned layout with cascading indents),
+  reachable from the top of Settings or by long-pressing the home-screen hamburger: theme picker; UI scale;
+  **12 individually settable colors** layered over the active theme, each with a picker sheet offering hex
+  entry, RGB sliders, a palette and a reset-to-theme-default; **external font import** (`.ttf`/`.otf`) with
+  every font option rendered in its own glyphs; text-size scale; and a **download-list item spacing** slider
+  (0–32 dp). All overrides persist in `shiroikumaUi.json` and apply app-wide, live.
+- New configurable types and renderers powering the page: `ColorConfigurable` (picker sheet),
+  `FontConfigurable` (in-glyph previews + add-font), `SliderConfigurable` (inline slider).
+- **Yellow border on every dialog** — the shared SheetUI container draws the fork's border (theme
+  `onSurface`, i.e. pure yellow under the 白い熊 theme), covering the add/edit download dialogs, queues,
+  categories, batch, download-info, finished, updater, browser prompts and every other sheet.
+- **Fork-styled flash notifications** — in-app flashes draw a solid full-opacity yellow border instead of
+  upstream's near-invisible 10 %-alpha one; still theme-driven, so it follows colour overrides.
+- **Traced black–yellow icon** for launcher and in-app use: yellow-outlined download glyph, black interiors,
+  black square background; glyph scaled to 65 % in the launcher.
+
+### Changed
+
+- **App id `shiroikuma.shutokukanri`** — installs side-by-side with the official app; the code namespace
+  stays `com.abdownloadmanager.android`, so only the installed package id differs.
+- **Launcher and browser labels** renamed to 白い熊 取得管理, and the main-screen header title hardcoded to it.
+- **Android only** — the desktop app is not shipped; **arm64-v8a only** (`ndk.abiFilters`), keeping the APK lean.
+- **Fork versioning** — `versionName = <upstream version>+<build>`, `versionCode = upstream packed semver × 100
+  + build`, monotonic across upstream upgrades.
+- **Signed releases** via a local keystore (`keystore.properties`), non-interactive, and the **foojay toolchain
+  resolver enabled** so the JDK build toolchain auto-provisions.
+
+### Fixed
+
+- **New-issue form** fixed and de-branded to point at this fork instead of upstream.
+
+---
+
+# Upstream changelog — AB Download Manager
+
+Everything below is upstream's own changelog, unchanged.
+
 # Changelog
 
 ## Unreleased
