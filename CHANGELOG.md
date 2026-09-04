@@ -4,6 +4,115 @@ This file carries **two histories**: the fork's own releases first, then upstrea
 [AB Download Manager](https://github.com/amir1376/ab-download-manager)'s changelog below, unchanged.
 Fork releases are named `<upstream version>+<build>`; each says which upstream release it is built on.
 
+## 白い熊 取得管理 1.10.2+004 — 2026-09-04
+
+Built on upstream **v1.10.2**.
+
+This release implements **sister-app automation contract v2**: the app now answers automation out of
+the box, and gains a **data door** through which 白い熊 応用管理 can back it up *with its data* and
+restore it onto a wiped phone. It also fixes a defect that had been silent since the automation was
+first added — every reply this fork sent to 自由作業盤 was being discarded by the platform.
+
+### Fixed
+
+- **The fork had no `<queries>` element at all, so every automation reply was silently discarded.**
+  On Android 11+ package visibility filtering makes `setPackage()` fail without an error when the
+  target is not declared, so the 保存復元 export ran, wrote a correct ZIP, reported a correct byte
+  count — and nothing was ever heard on the other side. The manifest now declares **both** callers,
+  `shiroikuma.oyokanri` and `shiroikuma.jiyusagyoban`. The same filtering also applies to
+  `getPackageInfo` and `getPackagesForUid`, so without it the new data door would refuse a genuine
+  caller as "signature unreadable" rather than merely go unheard.
+- **An import could report success over data that never reached disk.** Settings are persisted
+  through a `MutableStateFlow` whose write-back runs `.debounce(500.milliseconds)` before DataStore
+  is even asked to write, and 応用管理 force-stops an app with `SIGKILL` the instant it replies `OK`
+  to an import. The reply now waits for the write-back to settle first — four times the debounce,
+  because being a second late costs nothing and being early loses the whole restore.
+- **A stale automation start could tear the foreground service down underneath a running export.**
+  Android delivers every start to the same service object, so a caller retrying with a spent job id
+  hit a teardown path that called `stopForeground` and `stopSelf` while the first export was still
+  writing — dropping foreground protection mid-write and truncating the archive with the caller told
+  nothing. Jobs in flight are now counted and only the last one out tears down. `stopSelf()` is
+  called without a start id deliberately: with concurrent starts the stale start always carries the
+  *newest* id, so the id-guarded form satisfies the very check meant to protect the running job.
+- **A start that runs nothing must still go to the foreground.** Once `startForegroundService` has
+  been called the platform requires `startForeground` whatever the service then decides, and kills
+  the process with `ForegroundServiceDidNotStartInTimeException` otherwise — so a caller retrying
+  with a stale id would have crashed the very app it was backing up.
+- **Automation preferences are written with `commit()`, not `apply()`.** The master switch now
+  defaults to *on*, so this gate **fails open**: a write that never reaches disk does not fall back
+  to "off", it falls back to "on". Turning the app off is the one action that shuts a sister app out,
+  and it is the action most likely to be running near a force-stop.
+
+### Added
+
+- **The data door — a `ContentProvider` at `<pkg>.automation`.** Four synchronous methods:
+  `describe` (a header of app id, version, format, `min_format_readable`, `requires_launch_first`,
+  a size estimate and the human-readable list of what a backup contains), `export`, `import` and
+  `cancel`. Every answer uses the same `OK:` / `ERROR:` grammar as the broadcast contract, and a
+  refusal is returned rather than thrown — an exception across a binder tells the user nothing and a
+  misbehaving caller rather more than it should.
+- **`import` exists only here, never as a broadcast.** An import overwrites the app's data, and the
+  broadcast receiver is exported without a permission, so an import there would let any app on the
+  phone wipe this one.
+- **The caller is identified three ways**: an exact package name from a fixed map — never a prefix,
+  since any sideloaded app may call itself `shiroikuma.evil` — cross-checked against the uid the
+  kernel reports, and finally against a **pinned signing certificate**, because whichever caller
+  package is absent from the device is a name anyone can take, and a clean phone is precisely a
+  device where not everything is installed yet.
+- **The payload moves through a caller-supplied `ParcelFileDescriptor`**, not a path: a backup is not
+  a stable directory while it is being assembled, encryption and checksums are computed per known
+  file, and a descriptor is a capability that expires when it is closed. A consequence worth having
+  is that the automation path no longer needs `MANAGE_EXTERNAL_STORAGE`.
+- **`AutomationDataService`**, a foreground service where the export or import actually runs, so a
+  binder call is never held for minutes and a backgrounded app is not frozen mid-stream into a
+  truncated archive underneath a success reply.
+- **Capability discovery through manifest `<meta-data>`** (`contract`, `format`, `min_format`), which
+  a sister app can read for an app that is currently frozen and therefore cannot be asked anything.
+- **A heartbeat on the data door.** The export writes into a descriptor the caller supplied, which
+  may be a **pipe** — so a category blocks for exactly as long as the caller is slow to drain it, a
+  stall with no relation to how much data the app holds. The last progress line is re-sent after
+  25 seconds of quiet, well inside the two minutes after which a caller presumes an app is dead.
+- **An incoming import is spooled to disk and capped**, rather than read straight into memory: the
+  far end of that descriptor is the caller's file and its length is the caller's claim, not ours.
+
+### Changed
+
+- **The authorization token is now optional, and automation ships enabled.** `automation_enabled`
+  defaults to **true** and a new `automation_require_token` defaults to **false**. A pasted secret
+  cannot survive a wipe, and the case this serves is a restore onto a clean phone where nothing has
+  been configured and nobody has pasted anything. A one-time seed brings existing installs onto the
+  new defaults — a plain change of default would not have reached them, because the old switch
+  persisted its value the moment anything read it.
+- **A token sent to the app while it does not require one is ignored, never refused.** Tokens live in
+  task arguments that outlive the setting they were pasted for, and refusing them would turn "a
+  switch was turned off" into "half the batch mysteriously fails".
+- **Both switches are checked in one function**, so no receiver, provider or service can implement
+  the two checks in a subtly different order — which is how "disabled" and "bad token" drift apart.
+  The two remain distinct answers, because they debug differently.
+- **The gate reads its preferences directly, with no dependency injection.** A `ContentProvider`'s
+  `onCreate` runs *before* `Application.onCreate`, so a gate that needed the DI graph would carry a
+  cold-start race — and that is not an edge case, it is the clean-phone case, where the provider call
+  is what starts the process at all.
+- **Three rows in the Export/Import section**, in place of two: the master switch, 「認証トークンを
+  使う？」, and the token row — which is now **hidden unless a token is actually being asked for**, so
+  a 48-character secret is not left sitting under an off switch inviting a pointless paste.
+- The progress sender is now shared by both doors and parameterised on the correlation id, so the
+  broadcast contract's `reply_id` and the data door's `job_id` are served by one implementation
+  rather than two that drift.
+
+### Notes
+
+- **A backup here is settings, not downloads.** Every category is configuration — appearance,
+  download settings, download categories, per-host rules, proxy, bookmarks. Nothing walks the
+  download list or the files on disk, so a part-finished multi-gigabyte download cannot be swept into
+  a backup by construction rather than by a filter. The corollary, stated plainly: **in-progress
+  downloads do not survive a restore** — a restored install comes back with its settings, categories
+  and bookmarks, and an empty queue.
+- The broadcast receiver of contract v1 is unchanged in behaviour and remains the deliberately
+  unauthenticated half of the surface: it only ever writes where it was told to and reports what it
+  did. It deliberately did *not* gain the heartbeat, because it writes a local file, finishes in
+  seconds, and is already proven in use.
+
 ## 白い熊 取得管理 1.10.2+001 — 2026-08-24
 
 Built on upstream **v1.10.2**.
