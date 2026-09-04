@@ -115,6 +115,9 @@ fun ShiroikumaUiPage(
                     Spacer(Modifier.height(topPadding))
                     var seenFirstSection = false
                     for (entry in component.entries) {
+                        // the entry list is fixed, so this gate is stable across recompositions
+                        val gate = entry.visibleWhen
+                        if (gate != null && !gate.collectAsState().value) continue
                         when (entry) {
                             is ShiroikumaUiComponent.Entry.Section -> {
                                 SectionHeader(

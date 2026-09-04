@@ -58,6 +58,13 @@ class ShiroikumaUiComponent(
     sealed interface Entry {
         val level: Int
 
+        /**
+         * When set, the row is drawn only while this is true — the one case being the automation
+         * token, which is hidden unless 白い熊 has asked for a token at all. A 48-character secret
+         * sitting under an off switch only invites pasting it somewhere it will do nothing.
+         */
+        val visibleWhen: StateFlow<Boolean>? get() = null
+
         data class Section(val title: String, override val level: Int) : Entry
         data class Item(val configurable: Configurable<*>, override val level: Int) : Entry
 
@@ -73,6 +80,7 @@ class ShiroikumaUiComponent(
             override val level: Int,
             val trailingLabel: String? = null,
             val onTrailingClick: (() -> Unit)? = null,
+            override val visibleWhen: StateFlow<Boolean>? = null,
         ) : Entry
     }
 
@@ -303,10 +311,23 @@ class ShiroikumaUiComponent(
             Entry.Item(
                 BooleanConfigurable(
                     title = "自動エクスポート".asStringSource(),
-                    description = ("姉妹アプリの作業が、トークン付きインテントでこのアプリのエクスポートを" +
-                        "起動できるようにする。").asStringSource(),
+                    description = ("姉妹アプリが、このアプリのエクスポートを起動し、設定を控えられる" +
+                        "ようにする。切ると、このアプリだけを一括保存から外せる。").asStringSource(),
                     backedBy = AutomationAuth.enabled,
                     describe = { (if (it) "有効" else "無効").asStringSource() },
+                ),
+                1,
+            )
+        )
+        add(
+            Entry.Item(
+                BooleanConfigurable(
+                    title = "認証トークンを使う？".asStringSource(),
+                    description = ("切のときは、どの姉妹アプリでも自動化を動かせる。入にすると、" +
+                        "呼び出し側は下のトークンも示す必要がある。データ扉は、どちらでも" +
+                        "呼び出し元の名前と署名を確かめる。").asStringSource(),
+                    backedBy = AutomationAuth.requireToken,
+                    describe = { (if (it) "必要" else "不要").asStringSource() },
                 ),
                 1,
             )
@@ -320,6 +341,8 @@ class ShiroikumaUiComponent(
                 level = 1,
                 trailingLabel = "再生成",
                 onTrailingClick = ::askRegenerateAutomationToken,
+                // hidden unless a token is actually being asked for
+                visibleWhen = AutomationAuth.requireToken,
             )
         )
 

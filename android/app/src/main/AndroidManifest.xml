@@ -19,6 +19,15 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <!--    Themed flash notifications on top of other apps, instead of the system toast-->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <!--    Package visibility (Android 11+): without this, setPackage() on our reply broadcast
+            fails SILENTLY — the export runs, writes correctly, and is never heard of. BOTH callers
+            must be named: 応用管理 drives the data door, 自由作業盤 drives the 保存復元 batch.
+            This element was absent from this fork altogether until contract v2.-->
+    <queries>
+        <package android:name="shiroikuma.oyokanri"/>
+        <package android:name="shiroikuma.jiyusagyoban"/>
+    </queries>
+
     <application
             android:name=".ABDMApp"
             android:theme="@style/Theme.ABDownloadManager"
@@ -129,8 +138,12 @@
             </intent-filter>
         </receiver>
 
-        <!--        保存復元: token-gated headless export driven by 白い熊 自由作業盤.
-                    No android:permission — the caller cannot hold one; the token is the gate.-->
+        <!--        保存復元: headless export driven by 白い熊 自由作業盤. No android:permission —
+                    since contract v2 this is the deliberately unauthenticated half of the surface:
+                    it only writes where it was told to and reports what it did. The gate is
+                    AutomationAuth (master switch on, token opt-in). Anything moving data through a
+                    caller-supplied descriptor lives behind AutomationProvider, which checks who is
+                    calling.-->
         <receiver
                 android:name=".automation.StateExportReceiver"
                 android:exported="true"
@@ -151,6 +164,33 @@
                     android:name="android.support.FILE_PROVIDER_PATHS"
                     android:resource="@xml/provider_paths"/>
         </provider>
+
+        <!--        The data door (contract v2 §2a): 応用管理 backs this app up WITH its data and
+                    puts it back on a clean phone. exported="true" with no android:permission on
+                    purpose — a custom permission could only be "normal" (any app may hold it) or
+                    "signature" (impossible; every app in this family has its own keystore).
+                    AutomationCallers is the real check: exact package name, uid cross-check and a
+                    pinned signing certificate.-->
+        <provider
+                android:name=".automation.AutomationProvider"
+                android:authorities="${applicationId}.automation"
+                android:exported="true"/>
+
+        <service
+                android:name=".automation.AutomationDataService"
+                android:exported="false"
+                android:foregroundServiceType="specialUse">
+            <property
+                    android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                    android:value="Automation data export/import"/>
+        </service>
+
+        <!--        Capability discovery, readable without waking us: 応用管理 builds its list across
+                    every installed package at once and must answer "can this app be backed up" for
+                    an app that is currently frozen, which cannot be asked anything.-->
+        <meta-data android:name="shiroikuma.automation.contract" android:value="2"/>
+        <meta-data android:name="shiroikuma.automation.format" android:value="1"/>
+        <meta-data android:name="shiroikuma.automation.min_format" android:value="1"/>
 
     </application>
 </manifest>

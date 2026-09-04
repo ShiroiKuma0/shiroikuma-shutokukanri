@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Environment
-import android.os.SystemClock
 import android.util.Log
 import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaExport
 import com.abdownloadmanager.android.pages.shiroikumaui.ShiroikumaExport.Cat
@@ -24,9 +23,15 @@ import java.util.concurrent.atomic.AtomicReference
 private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 /**
- * The 保存復元 automation contract: a sister app (白い熊 自由作業盤) fires a token-gated
- * broadcast, this app exports itself headlessly — no Activity, no interaction — reports
- * progress with real counts, and answers with the written path and size.
+ * The 保存復元 automation contract: a sister app (白い熊 自由作業盤) fires a broadcast, this
+ * app exports itself headlessly — no Activity, no interaction — reports progress with real
+ * counts, and answers with the written path and size.
+ *
+ * Since contract v2 this is the **unauthenticated** half of the automation surface, deliberately:
+ * it only ever writes where it was told to and reports what it did. Anything that moves data
+ * through a caller-supplied descriptor lives behind [AutomationProvider], which knows who is
+ * calling. The gate here is [AutomationAuth.refuse] — the master switch, plus a token only when
+ * 白い熊 has asked for one.
  *
  * `<pkg>.action.EXPORT_STATE` — run the normal category-ZIP export, honouring the `path`
  * and `items` extras; `<pkg>.action.LIST_CATEGORIES` — answer with the selectable ids;
@@ -51,9 +56,8 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
             val pending = goAsync()
             receiverScope.launch {
                 try {
-                    if (AutomationAuth.enabled.value &&
-                        AutomationAuth.matches(intent.getStringExtra(EXTRA_TOKEN))
-                    ) {
+                    // silent either way — a cancel answers nothing, refusal included
+                    if (AutomationAuth.refuse(appContext, intent.getStringExtra(EXTRA_TOKEN)) == null) {
                         cancelExport(intent.getStringExtra(EXTRA_REPLY_ID))
                     }
                 } finally {
@@ -98,9 +102,9 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
 
         receiverScope.launch {
             try {
+                val refusal = AutomationAuth.refuse(appContext, intent.getStringExtra(EXTRA_TOKEN))
                 when {
-                    !AutomationAuth.enabled.value -> reply("ERROR:automation disabled")
-                    !AutomationAuth.matches(intent.getStringExtra(EXTRA_TOKEN)) -> reply("ERROR:bad token")
+                    refusal != null -> reply(refusal)
                     action == "$pkg.$ACTION_LIST_CATEGORIES" -> reply(listCategories())
                     action == "$pkg.$ACTION_EXPORT_STATE" ->
                         runExport(appContext, intent, replyId, replyPackage, reply)
@@ -171,11 +175,12 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
             return
         }
 
-        val progress = ProgressSender(
+        val progress = AutomationProgressSender(
             context = context,
             action = intent.getStringExtra(EXTRA_PROGRESS_ACTION)?.takeIf { it.isNotBlank() },
             replyPackage = replyPackage,
-            replyId = replyId,
+            correlationId = replyId,
+            idExtras = AutomationProgressSender.REPLY_ID_ONLY,
         )
         val target = File(dir, ShiroikumaExport.exportFileName())
         // written as `<final-name>.part` and renamed only once it is whole, so a cancelled or
@@ -229,35 +234,6 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
             .replace('\n', ' ')
             .take(160)
 
-    /** Numbers, never a percentage — throttled to one broadcast per 500 ms. */
-    private class ProgressSender(
-        private val context: Context,
-        private val action: String?,
-        private val replyPackage: String,
-        private val replyId: String,
-    ) {
-        private var lastSentAt = 0L
-
-        fun send(done: Int, total: Int, label: String, force: Boolean = false) {
-            if (action == null) return
-            val now = SystemClock.elapsedRealtime()
-            if (!force && now - lastSentAt < MIN_INTERVAL_MS) return
-            lastSentAt = now
-            context.sendBroadcast(
-                Intent(action).apply {
-                    setPackage(replyPackage)
-                    addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
-                    putExtra(EXTRA_REPLY_ID, replyId)
-                    putExtra("app", APP_LABEL)
-                    putExtra("text", "$UNIT $done/$total — $label")
-                    putExtra("current", done.toLong())
-                    putExtra("total", total.toLong())
-                    putExtra("unit", UNIT)
-                }
-            )
-        }
-    }
-
     companion object {
         private const val TAG = "StateExportReceiver"
 
@@ -296,9 +272,5 @@ class StateExportReceiver : BroadcastReceiver(), KoinComponent {
         private const val EXTRA_REPLY_ACTION = "reply_action"
         private const val EXTRA_REPLY_PACKAGE = "reply_package"
         private const val EXTRA_REPLY_ID = "reply_id"
-
-        private const val APP_LABEL = "白い熊 取得管理"
-        private const val UNIT = "区分"
-        private const val MIN_INTERVAL_MS = 500L
     }
 }
