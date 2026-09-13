@@ -4,6 +4,38 @@ This file carries **two histories**: the fork's own releases first, then upstrea
 [AB Download Manager](https://github.com/amir1376/ab-download-manager)'s changelog below, unchanged.
 Fork releases are named `<upstream version>+<build>`; each says which upstream release it is built on.
 
+## 白い熊 取得管理 1.10.4+001 — 2026-09-13
+
+Built on upstream **v1.10.4**.
+
+### Changed
+
+- Rebased onto upstream v1.10.4, taking 1.10.3 along the way. Upstream moved `AppSettingsModel` out
+  of the Android module into shared code and now validates settings through SchemaKt, so the two
+  fork commits that touched the model were **ported to the new structure** rather than replayed:
+  - the 白い熊 default theme now overrides `theme` / `defaultDarkTheme` in the Android
+    `PlatformDefaultSettings` object, where upstream keeps per-platform defaults;
+  - `notificationVibration` (the completion buzz) is a field of the shared Android
+    `AppSettingsModel`, bound in its schema with a default of `true` — so an existing install keeps
+    buzzing without a migration, exactly as before.
+- `OverlayNotificationWindow` imports `BaseAppSettingsStorage` from its new package.
+- Fork counter reset for the new upstream line: `versionName 1.10.4+001`, `versionCode 52941201`
+  (upstream packed `529412` × 100 + 1), above the previous line's highest build (`52941004`), so it
+  installs straight over any earlier fork build.
+
+### Inherited from upstream 1.10.3 and 1.10.4
+
+- **Settings that would not stick** — UI scale among them — are saved properly now; the SchemaKt
+  validation is non-strict, so an unknown or malformed field no longer discards its neighbours
+  (upstream #1409).
+- **Use the entered path as the default download location**: the location field on the add-download
+  and add-multiple pages offers to remember the folder you just typed (#1406).
+- **The integration server listens on localhost only**, so nothing on the LAN can reach it (#1402).
+- **Better filename detection** when the name has to be extracted from the link itself (#1393).
+- Compose Multiplatform 1.11.1 → 1.12.0, refreshed translations.
+- Not shipped here: the system-tray sizing fix and the new window API are desktop-side, and this
+  fork ships the Android APK only.
+
 ## 白い熊 取得管理 1.10.2+004 — 2026-09-04
 
 Built on upstream **v1.10.2**.
