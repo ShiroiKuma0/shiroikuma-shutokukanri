@@ -24,7 +24,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.abdownloadmanager.android.storage.ShiroikumaUiSettings
 import com.abdownloadmanager.android.ui.ABDMOverlayNotificationContent
 import com.abdownloadmanager.shared.repository.BaseAppRepository
-import com.abdownloadmanager.shared.storage.BaseAppSettingsStorage
+import com.abdownloadmanager.shared.storage.appsettings.BaseAppSettingsStorage
 import com.abdownloadmanager.shared.ui.theme.ThemeManager
 import com.abdownloadmanager.shared.ui.widget.NotificationManager
 import ir.amirab.util.compose.IIconResolver
