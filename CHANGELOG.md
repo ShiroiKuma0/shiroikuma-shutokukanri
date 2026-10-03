@@ -4,6 +4,22 @@ This file carries **two histories**: the fork's own releases first, then upstrea
 [AB Download Manager](https://github.com/amir1376/ab-download-manager)'s changelog below, unchanged.
 Fork releases are named `<upstream version>+<build>`; each says which upstream release it is built on.
 
+## 白い熊 取得管理 1.10.4+002 — 2026-10-03
+
+Built on upstream **v1.10.4**.
+
+### Changed
+
+- **A tap on an unfinished download opens its details dialog instead of pausing it.** Upstream's
+  home list toggles the item under your finger, so every running or paused row is a full-width
+  pause button and a mis-tap stops a download, undone only by tapping again. The tap now opens the
+  same dialog the long-press menu's *show properties* opens — progress bar, per-part strip, and the
+  info / speed / on-completion tabs — where pause/resume already lives as the wide centre action
+  beside cancel. Pausing is therefore still two touches away, but deliberate, and the details are
+  reachable without a long press.
+- Unchanged by this: a **finished** item still opens its file on tap, and long-press still selects.
+  The now-callerless `toggleDownload` helper in `HomeComponent` was removed with it.
+
 ## 白い熊 取得管理 1.10.4+001 — 2026-09-13
 
 Built on upstream **v1.10.4**.

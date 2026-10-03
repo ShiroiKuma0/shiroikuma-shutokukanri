@@ -10,7 +10,7 @@ A fork of [AB Download Manager](https://github.com/amir1376/ab-download-manager)
 
 Installs **side-by-side** with the official app (app id `shiroikuma.shutokukanri`).
 
-**📥 Latest release: [`1.10.4+001`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases) · [changelog »](CHANGELOG.md)
+**📥 Latest release: [`1.10.4+002`](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shutokukanri/releases) · [changelog »](CHANGELOG.md)
 
 </div>
 
@@ -43,6 +43,16 @@ The caller is checked three ways: an exact package name (never a prefix — any 
 The backup itself travels through a file descriptor the caller opens, so this app writes bytes and nothing else: no path to race, no file dropped into a directory about to be renamed, encrypted and checksummed around it.
 
 **What a backup is here: settings, not downloads.** Every category is configuration, and nothing walks the download list or the files on disk — so a part-finished multi-gigabyte download cannot be swept in. The corollary, said plainly: **in-progress downloads do not survive a restore.** A restored install comes back with its settings, categories and bookmarks, and an empty queue.
+
+## 👆 A tap opens a download, it does not pause it
+
+Upstream makes a tap on a running download toggle it, which turns the list into a row of
+screen-wide pause buttons: the easiest gesture to reach an item is also the one that stops it, and
+a mis-tap is undone only by tapping again. Here the tap opens that download's **details dialog**
+instead — progress bar, per-part strip, info, speed and on-completion tabs — with pause/resume as
+its wide centre action next to cancel. Pausing stays one touch further away and deliberate, and the
+details no longer need a long press. A finished item still opens its file on tap, and long-press
+still selects.
 
 ## 🟨 Fork-styled chrome
 
