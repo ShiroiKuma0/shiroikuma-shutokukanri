@@ -193,17 +193,12 @@ class HomeComponent(
     fun onItemClicked(itemState: IDownloadItemState) {
         scope.launch {
             if (itemState is ProcessingDownloadItemState) {
-                toggleDownload(itemState)
+                // tapping an unfinished download opens its details dialog
+                // (which carries the pause/resume button) instead of toggling it
+                downloadDialogManager.openDownloadDialog(itemState.id)
                 return@launch
             }
             downloadItemOpener.openDownloadItem(itemState.id)
-        }
-    }
-
-    suspend fun toggleDownload(dItem: ProcessingDownloadItemState) {
-        when {
-            dItem.canBeResumed() -> downloadSystem.userManualResume(dItem.id)
-            dItem.canBePaused() -> downloadSystem.manualPause(dItem.id)
         }
     }
 
